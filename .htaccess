@@ -1,0 +1,13 @@
+
+RewriteEngine On
+RewriteCond %{HTTPS} !=on
+RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
+RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]
+
+<FilesMatch "^(config\.local\.php|\.installed|\.sodium-mail-key)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mime_module>
+  AddType application/manifest+json .webmanifest
+</IfModule>

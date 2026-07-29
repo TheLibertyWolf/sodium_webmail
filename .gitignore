@@ -1,0 +1,32 @@
+# Configuration et secrets propres à l’instance
+/config.local.php
+/.installed
+/.sodium-mail-key
+/.env
+/.env.*
+
+# Configuration générée par l’hébergeur
+/.user.ini
+/php.ini
+/cgi-bin/
+/.well-known/
+
+# Données téléversées et persistantes
+/uploads/*
+!/uploads/.gitignore
+
+# Journaux, caches et fichiers temporaires
+*.log
+*.cache
+*.tmp
+*.swp
+*.bak
+/.DS_Store
+/error_log
+/logs/
+/cache/
+/tmp/
+
+# Outils de développement
+/.idea/
+/.vscode/

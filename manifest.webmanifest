@@ -1,0 +1,30 @@
+{
+  "id": "/index.php",
+  "name": "Sodium Webmail",
+  "short_name": "Sodium",
+  "description": "Webmail professionnel multi-utilisateur et multi-comptes",
+  "lang": "fr-FR",
+  "start_url": "/index.php",
+  "scope": "/",
+  "display": "standalone",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "orientation": "any",
+  "background_color": "#f5f7fb",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/assets/icons/pwa-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/assets/icons/pwa-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}
