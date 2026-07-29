@@ -2,7 +2,7 @@
 
 `Version 0.9.1 bêta`
 
-Sodium est un webmail professionnel multi-utilisateur et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
+Sodium est un webmail professionnel multi-utilisateurs et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
 
 ## Aperçu
 
