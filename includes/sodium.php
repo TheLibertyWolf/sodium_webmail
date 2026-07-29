@@ -2,20 +2,20 @@
 declare(strict_types=1);
 
 const SODIUM_APTITUDES = [
-    'sodium_full_access' => 'Full accès',
+    'sodium_full_access' => 'Accès complet',
     'licence' => 'Licence',
-    'sodium_signatures_view' => 'Signatures — view',
+    'sodium_signatures_view' => 'Signatures — consultation',
     'sodium_signatures_manage_my' => 'Signatures — gestion personnelle',
     'sodium_signatures_manage_full' => 'Signatures — gestion complète',
-    'sodium_labels_view' => 'Tags — view',
+    'sodium_labels_view' => 'Tags — consultation',
     'sodium_labels_manage_my' => 'Tags — gestion personnelle',
     'sodium_labels_manage_full' => 'Tags — gestion complète',
-    'sodium_templates_view' => 'Modèles — view',
+    'sodium_templates_view' => 'Modèles — consultation',
     'sodium_templates_manage_my' => 'Modèles — gestion personnelle',
     'sodium_templates_manage_full' => 'Modèles — gestion complète',
-    'sodium_accounts_view' => 'Comptes mails — view',
+    'sodium_accounts_view' => 'Comptes mails — consultation',
     'sodium_accounts_manage' => 'Comptes mails — gestion',
-    'sodium_settings_view' => 'Messages — view',
+    'sodium_settings_view' => 'Messages — consultation',
     'sodium_settings_manage' => 'Messages — gestion',
 ];
 
@@ -299,11 +299,21 @@ function sodium_ensure_schema(): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_instance_settings(setting_key VARCHAR(100) PRIMARY KEY,setting_value TEXT NULL,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    sodium_ensure_column('users','twofa_required','TINYINT(1) NOT NULL DEFAULT 0');
+    sodium_ensure_column('users','twofa_enabled','TINYINT(1) NOT NULL DEFAULT 0');
+    sodium_ensure_column('users','twofa_secret','VARCHAR(100) NULL');
+    sodium_ensure_column('users','password_reset_hash','VARCHAR(255) NULL');
+    sodium_ensure_column('users','password_reset_expires_at','DATETIME NULL');
     $ready = true;
 }
 
-function sodium_instance_settings():array{global $pdo;sodium_ensure_schema();$defaults=['instance_name'=>'Sodium','organization_name'=>'','support_email'=>'','system_mail_account_id'=>'0','system_sender_name'=>'Sodium','timezone'=>'Europe/Paris'];$rows=$pdo->query('SELECT setting_key,setting_value FROM sodium_instance_settings')->fetchAll(PDO::FETCH_KEY_PAIR);return array_merge($defaults,$rows?:[]);}
+function sodium_instance_settings():array{global $pdo;sodium_ensure_schema();$defaults=['instance_name'=>'Sodium','organization_name'=>'','support_email'=>'','system_mail_account_id'=>'0','system_sender_name'=>'Sodium','system_mail_transport'=>'php','system_brevo_api_cipher'=>'','system_brevo_from_email'=>'','timezone'=>'Europe/Paris','cron_last_run_at'=>'','cron_last_status'=>'never','turnstile_enabled'=>(defined('TURNSTILE_ENABLED')&&TURNSTILE_ENABLED?'1':'0'),'turnstile_site_key'=>(defined('TURNSTILE_SITE_KEY')?TURNSTILE_SITE_KEY:''),'turnstile_secret_cipher'=>''];$rows=$pdo->query('SELECT setting_key,setting_value FROM sodium_instance_settings')->fetchAll(PDO::FETCH_KEY_PAIR);return array_merge($defaults,$rows?:[]);}
 function sodium_save_instance_settings(array $settings):void{global $pdo;sodium_ensure_schema();$stmt=$pdo->prepare('INSERT INTO sodium_instance_settings(setting_key,setting_value) VALUES(?,?) ON DUPLICATE KEY UPDATE setting_value=VALUES(setting_value)');foreach($settings as $key=>$value)$stmt->execute([$key,(string)$value]);}
+function sodium_turnstile_enabled():bool{return (string)(sodium_instance_settings()['turnstile_enabled']??'0')==='1';}
+function sodium_turnstile_site_key():string{return trim((string)(sodium_instance_settings()['turnstile_site_key']??''));}
+function sodium_turnstile_secret_key():string{$cipher=(string)(sodium_instance_settings()['turnstile_secret_cipher']??'');if($cipher!==''){try{return sodium_decrypt_secret($cipher);}catch(Throwable){return'';}}return defined('TURNSTILE_SECRET_KEY')?(string)TURNSTILE_SECRET_KEY:'';}
+function sodium_system_mail_transport():string{$transport=(string)(sodium_instance_settings()['system_mail_transport']??'php');return in_array($transport,['smtp','brevo','php'],true)?$transport:'php';}
+function sodium_system_brevo_api_key():string{$cipher=(string)(sodium_instance_settings()['system_brevo_api_cipher']??'');if($cipher==='')return'';try{return sodium_decrypt_secret($cipher);}catch(Throwable){return'';}}
 function sodium_system_sender_email():string{global $pdo;$settings=sodium_instance_settings();$id=(int)$settings['system_mail_account_id'];if($id){$stmt=$pdo->prepare('SELECT email_address FROM sodium_mail_accounts WHERE id=?');$stmt->execute([$id]);$email=(string)($stmt->fetchColumn()?:'');if(filter_var($email,FILTER_VALIDATE_EMAIL))return$email;}return'no-reply@'.(defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:'localhost');}
 
 function sodium_ensure_column(string $table, string $column, string $definition): void
@@ -405,7 +415,7 @@ function sodium_verify_license_key(string $licenseKey): array
     if(!preg_match('/^[a-f0-9]{128}$/',strtolower($licenseKey)))return ['status'=>'invalid','message'=>'Format de clé invalide.'];
     if(!function_exists('curl_init'))return ['status'=>'invalid','message'=>'Service de vérification indisponible.'];
     $curl=curl_init('https://licence.jessysystem.com/');
-    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.0'])]);
+    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.1'])]);
     $body=curl_exec($curl);$code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$error=curl_error($curl);curl_close($curl);
     if($body===false||$code!==200)return ['status'=>'invalid','message'=>$error!==''?'Serveur de licences inaccessible.':'Réponse invalide du serveur de licences.'];
     $result=json_decode((string)$body,true);

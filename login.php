@@ -10,6 +10,8 @@ $error = '';
 $username = trim($_POST['username'] ?? '');
 $pendingUserId = (int) ($_SESSION['sodium_pending_2fa_user_id'] ?? 0);
 $pendingRemember = !empty($_SESSION['sodium_pending_remember_me']);
+$turnstileEnabled = sodium_turnstile_enabled();
+$turnstileSiteKey = sodium_turnstile_site_key();
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = $_POST['action'] ?? 'login';
@@ -40,9 +42,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $rememberMe = !empty($_POST['remember_me']);
         $turnstileToken = $_POST['cf-turnstile-response'] ?? null;
 
-        if (TURNSTILE_ENABLED && !$turnstileToken) {
+        if ($turnstileEnabled && !$turnstileToken) {
             $error = 'Le challenge Cloudflare ne s’est pas chargé. Merci de rafraîchir la page.';
-        } elseif (TURNSTILE_ENABLED && !verify_turnstile($turnstileToken)) {
+        } elseif ($turnstileEnabled && !verify_turnstile($turnstileToken)) {
             $error = 'Validation Cloudflare refusée. Merci de rafraîchir la page puis de réessayer.';
         } elseif ($username === '' || $password === '') {
             $error = 'Veuillez renseigner vos identifiants.';
@@ -99,7 +101,7 @@ $showTwofa = !empty($_SESSION['sodium_pending_2fa_user_id']);
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="shortcut icon" href="/assets/icons/favicon-64.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-180.png">
-    <?php if (!$showTwofa && TURNSTILE_ENABLED): ?><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><?php endif; ?>
+    <?php if (!$showTwofa && $turnstileEnabled): ?><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><?php endif; ?>
 </head>
 <body class="auth-page">
     <div class="card auth-card shadow-lg">
@@ -137,7 +139,7 @@ $showTwofa = !empty($_SESSION['sodium_pending_2fa_user_id']);
                         <input class="form-check-input" type="checkbox" name="remember_me" id="remember_me" value="1">
                         <label class="form-check-label" for="remember_me">Se souvenir de moi</label>
                     </div>
-                    <?php if (TURNSTILE_ENABLED): ?><div class="cf-turnstile mb-3" data-sitekey="<?= e(TURNSTILE_SITE_KEY) ?>" data-theme="light"></div><?php endif; ?>
+                    <?php if ($turnstileEnabled): ?><div class="cf-turnstile mb-3" data-sitekey="<?= e($turnstileSiteKey) ?>" data-theme="light"></div><?php endif; ?>
                     <button class="btn btn-danger w-100" type="submit">Se connecter</button>
                 </form>
             <?php endif; ?>

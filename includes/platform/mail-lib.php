@@ -301,9 +301,31 @@ function password_reset_mail_account_id(): int
     global $pdo;
     mail_ensure_schema();
     $configuredId = system_mail_account_id();
-    $stmt = $pdo->prepare("SELECT id FROM sodium_mail_accounts WHERE id=? AND account_status='active' AND password_cipher IS NOT NULL LIMIT 1");
+    $stmt = $pdo->prepare("SELECT id FROM sodium_mail_accounts WHERE id=? AND account_status='active' AND password_cipher IS NOT NULL AND password_cipher<>'' LIMIT 1");
     $stmt->execute([$configuredId]);
     return (int)($stmt->fetchColumn() ?: 0);
+}
+
+function system_mail_transport_available(): bool
+{
+    global $pdo;
+    $transport=function_exists('sodium_system_mail_transport')?sodium_system_mail_transport():'smtp';
+    $settings=function_exists('sodium_instance_settings')?sodium_instance_settings():[];
+    if($transport==='smtp')return password_reset_mail_account_id()>0;
+    if($transport==='brevo')return function_exists('curl_init')&&function_exists('sodium_system_brevo_api_key')&&sodium_system_brevo_api_key()!==''&&filter_var((string)($settings['system_brevo_from_email']??''),FILTER_VALIDATE_EMAIL)!==false;
+    return $transport==='php'&&function_exists('mail')&&filter_var(function_exists('sodium_system_sender_email')?sodium_system_sender_email():'',FILTER_VALIDATE_EMAIL)!==false;
+}
+
+function system_mail_apply_transport(array $row): array
+{
+    $transport=function_exists('sodium_system_mail_transport')?sodium_system_mail_transport():'smtp';
+    $settings=function_exists('sodium_instance_settings')?sodium_instance_settings():[];
+    if($transport==='brevo'){
+        $row['provider']='brevo';$row['brevo_api_key']=sodium_system_brevo_api_key();$row['from_email']=(string)($settings['system_brevo_from_email']??'');$row['from_name']=(string)($settings['system_sender_name']??'Sodium');$row['reply_to']=$row['from_email'];
+    }elseif($transport==='php'){
+        $row['provider']='php';$row['from_email']=function_exists('sodium_system_sender_email')?sodium_system_sender_email():'no-reply@localhost';$row['from_name']=(string)($settings['system_sender_name']??'Sodium');$row['reply_to']=$row['from_email'];
+    }
+    return $row;
 }
 
 function password_reset_request_code(string $email, string $universe): bool
@@ -313,6 +335,7 @@ function password_reset_request_code(string $email, string $universe): bool
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) return false;
     password_reset_ensure_schema();
     mail_ensure_schema();
+    if (!system_mail_transport_available()) throw new RuntimeException('Aucun moyen d’envoi système n’est configuré. La procédure de mot de passe perdu est impossible pour le moment.');
     $stmt = $pdo->prepare("SELECT id,username,first_name,last_name,email,professional_email
         FROM users WHERE account_status='active' AND (LOWER(email)=? OR LOWER(professional_email)=?) LIMIT 1");
     $stmt->execute([$email,$email]);
@@ -325,7 +348,6 @@ function password_reset_request_code(string $email, string $universe): bool
     if ((int)$recent->fetchColumn() > 0) return true;
 
     $accountId = password_reset_mail_account_id();
-    if (!$accountId) throw new RuntimeException('Aucun compte d’envoi actif pour la réinitialisation.');
     $templateId = system_mail_template_id();
     $templateStmt = $pdo->prepare('SELECT * FROM mail_templates WHERE id=? AND is_active=1 LIMIT 1');
     $templateStmt->execute([$templateId]);
@@ -356,7 +378,7 @@ function password_reset_request_code(string $email, string $universe): bool
         $pdo->prepare('INSERT INTO mail_queue
             (account_id,template_id,related_type,related_id,to_email,to_name,subject,content_html,final_html,status,scheduled_at,created_by)
             VALUES (?,?,\'password_reset\',?,?,?,?,?,?,?,NOW(),NULL)')
-            ->execute([$accountId,$templateId,(int)$user['id'],$recipient,$name,$subject,$content,$finalHtml,$queueStatus]);
+            ->execute([$accountId?:null,$templateId,(int)$user['id'],$recipient,$name,$subject,$content,$finalHtml,$queueStatus]);
         $pdo->commit();
         return true;
     } catch (Throwable $exception) {
@@ -431,6 +453,7 @@ function mail_process_queue(int $limit = 20): array
     $rows = $stmt->fetchAll();
     $done = ['sent' => 0, 'failed' => 0];
     foreach ($rows as $row) {
+        $row=system_mail_apply_transport($row);
         $queueId = (int)$row['id'];
         try {
             $pdo->prepare("UPDATE mail_queue SET status='sending', error_message=NULL, updated_at=NOW() WHERE id=? AND status='queued'")->execute([$queueId]);
@@ -452,7 +475,20 @@ function mail_send_queued_row(array $row): void
         mail_send_brevo($row);
         return;
     }
+    if ($provider === 'php') {
+        mail_send_php($row);
+        return;
+    }
     mail_send_smtp($row);
+}
+
+function mail_send_php(array $row): void
+{
+    $fromEmail=trim((string)($row['from_email']??''));$toEmail=trim((string)($row['to_email']??''));
+    if(!filter_var($fromEmail,FILTER_VALIDATE_EMAIL)||!filter_var($toEmail,FILTER_VALIDATE_EMAIL))throw new RuntimeException('Adresse d’envoi PHP invalide.');
+    $fromName=trim((string)($row['from_name']??'Sodium'));
+    $headers=['MIME-Version: 1.0','Content-Type: text/html; charset=UTF-8','Content-Transfer-Encoding: 8bit','From: '.mb_encode_mimeheader($fromName).' <'.$fromEmail.'>','Reply-To: <'.$fromEmail.'>'];
+    if(!mail($toEmail,mb_encode_mimeheader((string)$row['subject']),(string)$row['final_html'],implode("\r\n",$headers)))throw new RuntimeException('La fonction PHP mail() a refusé le message.');
 }
 
 function mail_send_brevo(array $row): void

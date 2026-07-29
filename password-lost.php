@@ -6,6 +6,8 @@ $sent = false;
 $resetDone = false;
 $error = '';
 $requestedEmail = trim((string)($_POST['email'] ?? ''));
+$turnstileEnabled = sodium_turnstile_enabled();
+$turnstileSiteKey = sodium_turnstile_site_key();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string)($_POST['action'] ?? 'request');
     if ($action === 'reset') {
@@ -25,15 +27,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } elseif ($requestedEmail !== '') {
         $turnstileToken = (string)($_POST['cf-turnstile-response'] ?? '');
-        if (TURNSTILE_ENABLED && ($turnstileToken === '' || !verify_turnstile($turnstileToken))) {
+        if ($turnstileEnabled && ($turnstileToken === '' || !verify_turnstile($turnstileToken))) {
             $error = 'La vérification de sécurité a échoué. Veuillez réessayer.';
         } else {
             try {
                 password_reset_request_code($requestedEmail,'sodium');
             } catch (Throwable $exception) {
                 error_log('[Sodium password reset queue] '.$exception->getMessage());
+                $error=str_contains($exception->getMessage(),'Aucun moyen d’envoi système')?'La procédure de mot de passe perdu est indisponible : aucun compte SMTP, accès Brevo ou envoi PHP utilisable n’est configuré.':'L’envoi du code est momentanément indisponible.';
             }
-            $sent = true;
+            $sent = $error==='';
         }
     }
 }
@@ -49,7 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="shortcut icon" href="/assets/icons/favicon-64.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-180.png">
-    <?php if (TURNSTILE_ENABLED): ?><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><?php endif; ?>
+    <?php if ($turnstileEnabled): ?><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><?php endif; ?>
 </head>
 <body class="auth-page">
     <div class="card auth-card shadow-lg">
@@ -81,7 +84,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <label class="form-label" for="email">Adresse mail personnelle ou professionnelle</label>
                         <input class="form-control" id="email" name="email" type="email" required>
                     </div>
-                    <?php if (TURNSTILE_ENABLED): ?><div class="cf-turnstile mb-3" data-sitekey="<?= e(TURNSTILE_SITE_KEY) ?>" data-theme="light"></div><?php endif; ?>
+                    <?php if ($turnstileEnabled): ?><div class="cf-turnstile mb-3" data-sitekey="<?= e($turnstileSiteKey) ?>" data-theme="light"></div><?php endif; ?>
                     <button class="btn btn-danger w-100" type="submit">Envoyer le code</button>
                 </form>
                 <div class="text-center mt-3"><a href="/login.php" class="link-secondary">Retour connexion</a></div>

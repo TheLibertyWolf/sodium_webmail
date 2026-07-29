@@ -1,6 +1,6 @@
 # Sodium Webmail
 
-`Version 0.9.0 bêta`
+`Version 0.9.1 bêta`
 
 Sodium est un webmail professionnel multi-utilisateur et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
 
@@ -27,13 +27,17 @@ L’interface réunit l’authentification, la boîte de réception unifiée, la
 - notifications de bureau et Web Push ;
 - thèmes clair et sombre, interface responsive et PWA ;
 - gestion autonome des utilisateurs, comptes, habilitations et paramètres d’instance ;
+- obligation 2FA configurable individuellement par utilisateur ;
+- protection Cloudflare Turnstile administrable depuis les paramètres de sécurité ;
+- choix du transport des notifications système : SMTP Sodium, API Brevo ou fonction PHP `mail()` ;
+- contrôle de la dernière exécution du cron avec commande cPanel prête à copier ;
 - activation par licence liée au domaine.
 
 ## Prérequis serveur
 
 - serveur web Apache 2.4 compatible `.htaccess` et HTTPS ;
 - PHP 8.2 ou version ultérieure ;
-- MySQL 8 ou MariaDB 10.5 ou version ultérieure ;
+- MySQL 8 ou MariaDB 10.5 ou version ultérieure — une base SQL est obligatoire, Sodium ne peut pas fonctionner sans base de données ;
 - accès sortant HTTPS vers le serveur de licences et, si activé, Cloudflare Turnstile ;
 - accès réseau aux serveurs IMAP et SMTP configurés ;
 - tâche cron exécutable au minimum une fois par minute ;
@@ -52,6 +56,42 @@ L’interface réunit l’authentification, la boîte de réception unifiée, la
 - `iconv`.
 
 Le wizard vérifie automatiquement ces dépendances avant l’installation.
+
+### Base de données et droits SQL
+
+Sodium nécessite une base MySQL ou MariaDB dédiée. La base et l’utilisateur SQL doivent être créés avant de lancer le wizard. L’utilisateur SQL doit disposer, uniquement sur la base Sodium, des droits suivants :
+
+```text
+ALTER
+ALTER ROUTINE
+CREATE
+CREATE ROUTINE
+CREATE TEMPORARY TABLES
+CREATE VIEW
+DELETE
+DROP
+EVENT
+EXECUTE
+INDEX
+INSERT
+LOCK TABLES
+REFERENCES
+SELECT
+SHOW VIEW
+TRIGGER
+UPDATE
+```
+
+Exemple à adapter au nom de la base et de l’utilisateur :
+
+```sql
+GRANT ALTER, ALTER ROUTINE, CREATE, CREATE ROUTINE, CREATE TEMPORARY TABLES,
+CREATE VIEW, DELETE, DROP, EVENT, EXECUTE, INDEX, INSERT, LOCK TABLES,
+REFERENCES, SELECT, SHOW VIEW, TRIGGER, UPDATE
+ON sodium_database.* TO 'sodium_user'@'localhost';
+```
+
+Il n’est pas nécessaire d’accorder des privilèges globaux, la gestion des utilisateurs SQL ou l’accès aux autres bases du serveur.
 
 ## Composants d’interface
 
@@ -101,6 +141,16 @@ Chaque boîte requiert :
 - éventuellement un label, une couleur et une icône PNG ou WebP.
 
 Les mots de passe de messagerie sont chiffrés en AES-256-GCM à l’aide d’une clé propre à l’instance.
+
+### Notifications système et mot de passe perdu
+
+Dans `Administration > Paramètres généraux`, choisissez le transport utilisé pour les notifications et les codes de récupération :
+
+- **Compte mail Sodium** : utilise les paramètres SMTP d’un compte mail actif ;
+- **API Brevo** : nécessite une adresse expéditeur validée chez Brevo et une clé API, stockée chiffrée ;
+- **PHP mail()** : choix initial par défaut, sous réserve que la fonction soit correctement configurée par l’hébergeur.
+
+Si le transport sélectionné n’est pas utilisable, Sodium n’annonce pas l’envoi d’un code et indique clairement que la procédure de mot de passe perdu est indisponible. L’envoi PHP doit faire l’objet d’un contrôle de délivrabilité et d’une configuration correcte de SPF et DKIM.
 
 ## Sécurité
 
