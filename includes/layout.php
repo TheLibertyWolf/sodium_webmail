@@ -194,7 +194,7 @@ function sodium_render_header(string $title): void
             <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
                 <div class="modal-header"><div><div class="text-danger small fw-semibold text-uppercase">À propos</div><h2 class="modal-title h4 mb-0" id="aboutModalLabel">Sodium</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 0.9.1 bêta</span></div>
+                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 0.9.2 bêta</span></div>
                     <h3 class="h6">Édition et réalisation</h3><p><strong>Sodium Webmail</strong> est un logiciel SaaS conçu, édité et maintenu par <strong>Jessy System</strong>. Il centralise l’accès aux comptes de messagerie attribués aux utilisateurs autorisés dans un environnement professionnel privé.</p>
                     <h3 class="h6">Licence d’exploitation</h3><p>Cette instance est mise à disposition dans le cadre d’une licence d’exploitation SaaS <code><?=e($appLicense['license_type']??'non enregistrée')?></code> concédée à <code><?=e($appLicense['rights_holder']??'ayant droit non enregistré')?></code><?php if(!empty($appLicense['registered_at'])): ?>, enregistrée le <code><?=e(date('d/m/Y',strtotime((string)$appLicense['registered_at'])))?></code><?php endif; ?><?php if(!empty($appLicense['expires_at'])&&$appLicense['expires_at']<'9999-01-01'): ?> et valable jusqu’au <code><?=e(date('d/m/Y',strtotime((string)$appLicense['expires_at'])))?></code><?php elseif(!empty($appLicense['expires_at'])): ?>, pour une durée <code>perpétuelle</code><?php endif; ?>. Elle confère un droit personnel d’accès et d’utilisation du service sur le domaine autorisé, dans les limites fonctionnelles, techniques et contractuelles convenues. Elle n’emporte aucune cession des droits de propriété intellectuelle sur le logiciel.</p>
                     <h3 class="h6">Propriété intellectuelle et étendue des droits</h3><p>L’architecture, le code, l’interface, les développements, les textes, les éléments graphiques, les bases de données et les composants de Sodium demeurent protégés. Sauf autorisation écrite ou exception prévue par la loi, sont interdits la reproduction, la mise à disposition de tiers, la sous-licence, la commercialisation, l’extraction substantielle, l’adaptation ou le contournement des dispositifs techniques de licence. Les droits strictement nécessaires à l’utilisation conforme du logiciel par l’ayant droit demeurent réservés conformément aux dispositions légales applicables.</p>
@@ -207,7 +207,7 @@ function sodium_render_header(string $title): void
                     <h3 class="h6">Protection des données</h3><p>L’ayant droit demeure responsable de la détermination des finalités et des habilitations associées aux traitements réalisés au moyen de Sodium. Les mesures de sécurité, de confidentialité, de sauvegarde et de gestion des incidents doivent être organisées conformément aux rôles effectifs des parties et à la réglementation applicable. Les présentes informations ne remplacent pas un contrat de licence, un accord de niveau de service ou un accord de traitement des données lorsqu’un tel document est requis.</p>
                     <div class="border rounded p-3 bg-body-tertiary"><strong>Copyright © 2026 Jessy System — Tous droits réservés.</strong><br><span class="text-muted">Produit : <code><?=e($appLicense['product_name']??'Sodium Webmail')?></code> · Domaine autorisé : <code><?=e($appLicense['allowed_domain']??'non enregistré')?></code> · Statut : <code><?=e(!empty($appLicense['is_valid'])?'licence active':'activation requise')?></code>.</span></div>
                 </div>
-                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 0.9.1 bêta</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 0.9.2 bêta</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
         </div>
 
@@ -319,6 +319,13 @@ function sodium_render_footer(): void
                 </div></div><aside class="col-xl-3 compose-attachments"><h3 class="h6"><i class="bi bi-paperclip"></i> Pièces jointes</h3><label class="attachment-dropzone"><i class="bi bi-cloud-arrow-up"></i><span>Ajouter des fichiers</span><small>25 Mo maximum au total</small><input type="file" name="attachments[]" multiple></label><div class="forwarded-attachment-list"></div><div class="attachment-file-list"></div></aside></div></div>
                 <div class="modal-footer compose-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Annuler</button><button class="btn btn-outline-secondary" type="submit" name="compose_action" value="draft"><i class="bi bi-file-earmark-text"></i> Enregistrer (brouillon)</button><div class="compose-schedule"><input class="form-control form-control-sm" type="datetime-local" name="scheduled_at" aria-label="Date et heure d’envoi"><button class="btn btn-outline-primary text-nowrap" type="submit" name="compose_action" value="schedule"><i class="bi bi-clock"></i> Programmer l’envoi</button></div><button class="btn btn-danger" type="submit" name="compose_action" value="send"><i class="bi bi-send"></i> Envoyer maintenant</button></div>
             </form></div></div>
+        </div>
+        <div class="modal fade" id="composeLeaveModal" tabindex="-1" aria-hidden="true" aria-labelledby="composeLeaveTitle">
+            <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+                <div class="modal-header"><h2 class="modal-title h5" id="composeLeaveTitle"><i class="bi bi-file-earmark-text me-2"></i>Conserver ce message ?</h2></div>
+                <div class="modal-body"><p class="mb-0">Voulez-vous enregistrer cette rédaction dans les brouillons avant de la quitter ?</p></div>
+                <div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-compose-leave="continue">Continuer la rédaction</button><button class="btn btn-outline-danger" type="button" data-compose-leave="discard"><i class="bi bi-trash"></i> Quitter sans enregistrer</button><button class="btn btn-danger" type="button" data-compose-leave="draft"><i class="bi bi-file-earmark-check"></i> Enregistrer en brouillon</button></div>
+            </div></div>
         </div>
         <?php endif; ?>
         <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
@@ -639,14 +646,41 @@ function sodium_render_footer(): void
                     });
                 });
 
-                document.querySelectorAll('.human-date').forEach(date => {
+                const humanDateElements = Array.from(document.querySelectorAll('.human-date'));
+                const formatHumanDate = timestamp => {
+                    if (!timestamp) return '';
+                    const now = Math.floor(Date.now() / 1000);
+                    if (timestamp > now + 30) {
+                        const future = timestamp - now;
+                        if (future < 3600) return `dans ${Math.max(1, Math.ceil(future / 60))} min`;
+                        if (future < 86400) return `dans ${Math.max(1, Math.ceil(future / 3600))} h`;
+                        return `dans ${Math.max(1, Math.ceil(future / 86400))} j`;
+                    }
+                    const difference = Math.max(0, now - timestamp);
+                    if (difference < 60) return 'à l’instant';
+                    if (difference < 3600) return `il y a ${Math.max(1, Math.floor(difference / 60))} min`;
+                    if (difference < 86400) return `il y a ${Math.floor(difference / 3600)} h`;
+                    if (difference < 172800) return 'hier';
+                    if (difference < 604800) return `il y a ${Math.floor(difference / 86400)} jours`;
+                    return new Date(timestamp * 1000).toLocaleDateString('fr-FR');
+                };
+                const refreshHumanDates = () => humanDateElements.forEach(date => {
+                    const timestamp = Number(date.dataset.timestamp || 0);
+                    if (!timestamp) return;
+                    date.dataset.human = formatHumanDate(timestamp);
+                    if (date.dataset.dateMode !== 'exact') date.textContent = date.dataset.human;
+                });
+                humanDateElements.forEach(date => {
                     const toggle = () => {
-                        const exact = date.textContent === date.dataset.exact;
-                        date.textContent = exact ? date.dataset.human : date.dataset.exact;
+                        const showHuman = date.dataset.dateMode === 'exact';
+                        date.dataset.dateMode = showHuman ? 'human' : 'exact';
+                        date.textContent = showHuman ? date.dataset.human : date.dataset.exact;
                     };
                     date.addEventListener('click', event => { event.stopPropagation(); toggle(); });
                     date.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggle(); } });
                 });
+                refreshHumanDates();
+                if (humanDateElements.length) window.setInterval(refreshHumanDates, 30000);
 
                 document.querySelectorAll('.bulk-mail-form').forEach(form => {
                     const master = form.querySelector('.select-all-messages');
@@ -691,6 +725,7 @@ function sodium_render_footer(): void
                     readerReplies.innerHTML = '';
                     readerReplies.classList.add('d-none');
                     document.getElementById('readerAttachments').innerHTML = '';
+                    document.getElementById('readerReplyAll')?.classList.add('d-none');
                     closeAttachmentPreview();
                     document.getElementById('readerSecurity').classList.add('d-none');
                     readerModal.show();
@@ -699,6 +734,13 @@ function sodium_render_footer(): void
                         const message = await response.json();
                         if (!response.ok) throw new Error(message.error || 'Lecture impossible');
                         readerMessage = {...readerMessage, ...message, selection:readerMessage.selection};
+                        const replyAllRecipients = new Set();
+                        [message.reply_email, ...(message.to_addresses || []).map(address => address.email), ...(message.cc_addresses || []).map(address => address.email)]
+                            .forEach(email => {
+                                const normalized = String(email || '').trim().toLowerCase();
+                                if (normalized && normalized !== String(message.account_email || '').toLowerCase()) replyAllRecipients.add(normalized);
+                            });
+                        document.getElementById('readerReplyAll')?.classList.toggle('d-none', replyAllRecipients.size <= 1);
                         updateUnreadBadges(message.unread_status);
                         document.getElementById('readerSubject').textContent = message.subject;
                         document.getElementById('readerSender').textContent = message.from;
@@ -993,7 +1035,46 @@ function sodium_render_footer(): void
                 document.getElementById('readerReplyAll')?.addEventListener('click', () => composeFromReader('replyAll'));
                 document.getElementById('readerForward')?.addEventListener('click', () => composeFromReader('forward'));
 
-                document.getElementById('composeModal')?.addEventListener('hidden.bs.modal', () => {
+                const composeElement = document.getElementById('composeModal');
+                const composeLeaveElement = document.getElementById('composeLeaveModal');
+                const composeLeaveModal = composeLeaveElement ? bootstrap.Modal.getOrCreateInstance(composeLeaveElement) : null;
+                let allowComposeClose = false;
+                const composeHasDraftableContent = () => {
+                    const form = composeElement?.querySelector('form');
+                    if (!form) return false;
+                    if (form.querySelector('[name="to_email"]')?.value || form.querySelector('[name="cc_email"]')?.value || form.querySelector('[name="bcc_email"]')?.value || form.querySelector('[name="subject"]')?.value.trim()) return true;
+                    if (form.querySelector('input[type="file"]')?.files?.length || form.querySelector('[data-forward-part]')) return true;
+                    const editor = form.querySelector('.rich-editor-content');
+                    if (!editor) return false;
+                    const copy = editor.cloneNode(true);
+                    copy.querySelectorAll('[data-sodium-signature], [data-sodium-signature-spacer]').forEach(element => element.remove());
+                    return Boolean(copy.textContent.trim() || copy.querySelector('img,table,blockquote,[data-sodium-quote],[data-sodium-template]'));
+                };
+                composeElement?.addEventListener('hide.bs.modal', event => {
+                    if (composeSubmissionInProgress || allowComposeClose || !composeHasDraftableContent()) return;
+                    event.preventDefault();
+                    composeLeaveModal?.show();
+                });
+                composeLeaveElement?.querySelector('[data-compose-leave="continue"]')?.addEventListener('click', () => composeLeaveModal?.hide());
+                composeLeaveElement?.addEventListener('hidden.bs.modal', () => {
+                    if (composeElement?.classList.contains('show')) document.body.classList.add('modal-open');
+                });
+                composeLeaveElement?.querySelector('[data-compose-leave="discard"]')?.addEventListener('click', () => {
+                    allowComposeClose = true;
+                    composeLeaveModal?.hide();
+                    bootstrap.Modal.getOrCreateInstance(composeElement).hide();
+                });
+                composeLeaveElement?.querySelector('[data-compose-leave="draft"]')?.addEventListener('click', () => {
+                    const form = composeElement?.querySelector('form');
+                    const draftButton = form?.querySelector('[name="compose_action"][value="draft"]');
+                    if (!form || !draftButton) return;
+                    composeLeaveModal?.hide();
+                    form.noValidate = true;
+                    form.requestSubmit(draftButton);
+                    window.setTimeout(() => { form.noValidate = false; }, 0);
+                });
+                composeElement?.addEventListener('hidden.bs.modal', () => {
+                    allowComposeClose = false;
                     cancelScheduledEdit(false);
                     const form = document.querySelector('#composeModal form');
                     form?.reset();
@@ -1003,6 +1084,7 @@ function sodium_render_footer(): void
                     if (editor) editor.innerHTML = '';
                     if (textarea) textarea.value = '';
                     form?.querySelectorAll('input[type="file"]').forEach(input => { input.value = ''; });
+                    form?.querySelectorAll('input[type="file"]').forEach(input => input.dispatchEvent(new Event('attachments:reset')));
                     form?.querySelectorAll('.attachment-file-list').forEach(list => { list.innerHTML = ''; });
                     form?.querySelectorAll('.forwarded-attachment-list').forEach(list => { list.innerHTML = ''; });
                     form?.querySelectorAll('[data-forward-part]').forEach(input => input.remove());
@@ -1017,9 +1099,15 @@ function sodium_render_footer(): void
                     const list = panel.querySelector('.attachment-file-list');
                     if (!input || !list) return;
                     let dragDepth = 0;
+                    let selectedFiles = [];
+                    const syncInputFiles = () => {
+                        const transfer = new DataTransfer();
+                        selectedFiles.forEach(file => transfer.items.add(file));
+                        input.files = transfer.files;
+                    };
                     const renderFiles = () => {
                         list.innerHTML = '';
-                        Array.from(input.files).forEach((file, index) => {
+                        selectedFiles.forEach((file, index) => {
                             const item = document.createElement('div'); item.className='attachment-file-item';
                             const size = file.size < 1024*1024 ? `${Math.ceil(file.size/1024)} Ko` : `${(file.size/1024/1024).toFixed(1)} Mo`;
                             const copy = document.createElement('span');
@@ -1031,11 +1119,8 @@ function sodium_render_footer(): void
                             remove.setAttribute('aria-label', `Retirer ${file.name}`);
                             remove.innerHTML = '<i class="bi bi-x-lg"></i>';
                             remove.addEventListener('click', () => {
-                                const transfer = new DataTransfer();
-                                Array.from(input.files).forEach((currentFile, currentIndex) => {
-                                    if (currentIndex !== index) transfer.items.add(currentFile);
-                                });
-                                input.files = transfer.files;
+                                selectedFiles.splice(index, 1);
+                                syncInputFiles();
                                 renderFiles();
                             });
                             item.append(copy, remove);
@@ -1043,18 +1128,26 @@ function sodium_render_footer(): void
                         });
                     };
                     const addFiles = files => {
-                        const transfer = new DataTransfer();
-                        Array.from(input.files).forEach(file => transfer.items.add(file));
-                        Array.from(files).forEach(file => transfer.items.add(file));
-                        const totalSize = Array.from(transfer.files).reduce((total, file) => total + file.size, 0);
+                        const additions = Array.from(files);
+                        const totalSize = [...selectedFiles, ...additions].reduce((total, file) => total + file.size, 0);
                         if (totalSize > 25 * 1024 * 1024) {
                             showClientToast('Les pièces jointes dépassent 25 Mo au total.', 'danger');
                             return;
                         }
-                        input.files = transfer.files;
+                        selectedFiles.push(...additions);
+                        syncInputFiles();
                         renderFiles();
                     };
-                    input.addEventListener('change', renderFiles);
+                    input.addEventListener('change', () => {
+                        const additions = Array.from(input.files);
+                        syncInputFiles();
+                        addFiles(additions);
+                    });
+                    input.addEventListener('attachments:reset', () => {
+                        selectedFiles = [];
+                        syncInputFiles();
+                        renderFiles();
+                    });
                     panel.addEventListener('dragenter', event => {
                         event.preventDefault();
                         dragDepth++;
