@@ -1,0 +1,11 @@
+{
+  "name": "sodium-webmail",
+  "version": "0.9.2",
+  "private": true,
+  "description": "Webmail professionnel multi-utilisateurs et multi-comptes.",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "dependencies": {
+    "bootstrap": "5.3.3",
+    "bootstrap-icons": "1.11.3"
+  }
+}

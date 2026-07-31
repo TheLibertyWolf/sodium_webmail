@@ -2,6 +2,12 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [Non publié]
+
+### Maintenance
+
+- ajout d’un manifeste npm déclaratif pour rendre les bibliothèques front-end visibles dans le Dependency graph GitHub.
+
 ## [0.9.2] — 2026-07-31
 
 ### Ajouts
