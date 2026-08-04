@@ -492,6 +492,22 @@ function sodium_render_footer(): void
                 composeAccount?.addEventListener('change', syncSignatures);
                 composeSignature?.addEventListener('change', applyComposeSignature);
                 syncSignatures();
+                const focusComposeEditor = () => {
+                    const editor = document.querySelector('#composeModal .rich-editor-content');
+                    if (!editor) return;
+                    editor.focus();
+                    const selection = window.getSelection();
+                    if (!selection) return;
+                    const range = document.createRange();
+                    const target = Array.from(editor.children).find(element => !element.matches('[data-sodium-signature]')) || editor;
+                    range.selectNodeContents(target);
+                    range.collapse(true);
+                    selection.removeAllRanges();
+                    selection.addRange(range);
+                };
+                document.getElementById('composeModal')?.addEventListener('shown.bs.modal', () => {
+                    window.requestAnimationFrame(focusComposeEditor);
+                });
                 composeTemplate?.addEventListener('change', () => {
                     const option = composeTemplate.selectedOptions[0];
                     if (!option?.value) return;
@@ -1026,7 +1042,7 @@ function sodium_render_footer(): void
                                 editor.appendChild(quote);
                             }
                             applyComposeSignature();
-                            editor.focus();
+                            focusComposeEditor();
                         };
                         composeElement.addEventListener('shown.bs.modal', finalizeReply, {once:true});
                         bootstrap.Modal.getOrCreateInstance(composeElement).show();

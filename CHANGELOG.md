@@ -11,6 +11,8 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 ### Corrections
 
 - prise en compte prioritaire de l’en-tête `Reply-To` lors d’une réponse, avec repli sur `From`, et affichage de l’adresse effective dans la lecture du message.
+- retour automatique à la page d’origine après un envoi ou une réponse, sans redirection vers la boîte d’envoi ;
+- placement automatique du curseur dans le corps du message à l’ouverture d’une rédaction ou d’une réponse.
 
 ## [0.9.2] — 2026-07-31
 

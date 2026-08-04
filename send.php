@@ -120,7 +120,7 @@ if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send
     }
     if($composeAction==='send'){
         flash('success','Message placé en attente pendant '.$sendDelay.' seconde'.($sendDelay>1?'s':'').'. Vous pouvez encore l’annuler depuis la boîte d’envoi.');
-        redirect('/outbox.php');
+        redirect($returnTo);
     }
     flash('success',$composeAction==='draft'?'Brouillon enregistré.':'Envoi programmé pour le '.$scheduledDate->format('d/m/Y à H:i').'.');
     redirect($returnTo);
