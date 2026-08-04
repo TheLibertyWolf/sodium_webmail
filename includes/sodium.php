@@ -415,7 +415,7 @@ function sodium_verify_license_key(string $licenseKey): array
     if(!preg_match('/^[a-f0-9]{128}$/',strtolower($licenseKey)))return ['status'=>'invalid','message'=>'Format de clé invalide.'];
     if(!function_exists('curl_init'))return ['status'=>'invalid','message'=>'Service de vérification indisponible.'];
     $curl=curl_init('https://licence.jessysystem.com/');
-    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.2'])]);
+    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.3'])]);
     $body=curl_exec($curl);$code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$error=curl_error($curl);curl_close($curl);
     if($body===false||$code!==200)return ['status'=>'invalid','message'=>$error!==''?'Serveur de licences inaccessible.':'Réponse invalide du serveur de licences.'];
     $result=json_decode((string)$body,true);
@@ -1144,11 +1144,6 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
         if ($result['html'] === '' && $result['plain'] === '' && $structure) {
             $result['plain'] = sodium_message_part_data($stream, $uid, '', (int)($structure->encoding ?? 0));
         }
-        $fromRaw = (string)($overview->from ?? '');
-        $addresses = imap_rfc822_parse_adrlist($fromRaw, '') ?: [];
-        $replyEmail = '';
-        if ($addresses) $replyEmail = strtolower((string)$addresses[0]->mailbox.'@'.(string)$addresses[0]->host);
-        $messageId = trim((string)($overview->message_id ?? ''));
         $parseAddresses = static function (string $header): array {
             $result = [];
             foreach (imap_rfc822_parse_adrlist($header, '') ?: [] as $address) {
@@ -1163,6 +1158,16 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
             }
             return array_values($result);
         };
+        $fromRaw = (string)($overview->from ?? '');
+        $fromAddresses = $parseAddresses($fromRaw);
+        $senderEmail = (string)($fromAddresses[0]['email'] ?? '');
+        $rawHeaders = (string)(@imap_fetchheader($stream, $uid, FT_UID) ?: '');
+        $parsedHeaders = $rawHeaders !== '' ? @imap_rfc822_parse_headers($rawHeaders) : false;
+        $replyToRaw = is_object($parsedHeaders) ? (string)($parsedHeaders->reply_toaddress ?? '') : '';
+        $replyToAddresses = $replyToRaw !== '' ? $parseAddresses($replyToRaw) : [];
+        $replyEmail = (string)($replyToAddresses[0]['email'] ?? $senderEmail);
+        $replyLabel = $replyToRaw !== '' ? sodium_decode_mime_header($replyToRaw) : sodium_decode_mime_header($fromRaw);
+        $messageId = trim((string)($overview->message_id ?? ''));
         $toRaw = (string)($overview->to ?? '');
         $ccRaw = (string)($overview->cc ?? '');
         return [
@@ -1170,7 +1175,10 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
             'message_id'=>$messageId,
             'message_key'=>hash('sha256', $messageId !== '' ? strtolower($messageId) : ((int)$account['id'].'|'.$folder.'|'.$uid)),
             'from'=>sodium_decode_mime_header($fromRaw),
+            'sender_email'=>filter_var($senderEmail, FILTER_VALIDATE_EMAIL) ? $senderEmail : '',
             'reply_email'=>filter_var($replyEmail, FILTER_VALIDATE_EMAIL) ? $replyEmail : '',
+            'reply_to'=>$replyLabel,
+            'reply_to_addresses'=>$replyToAddresses,
             'to'=>sodium_decode_mime_header($toRaw),
             'cc'=>sodium_decode_mime_header($ccRaw),
             'to_addresses'=>$parseAddresses($toRaw),

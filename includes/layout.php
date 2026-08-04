@@ -194,7 +194,7 @@ function sodium_render_header(string $title): void
             <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
                 <div class="modal-header"><div><div class="text-danger small fw-semibold text-uppercase">À propos</div><h2 class="modal-title h4 mb-0" id="aboutModalLabel">Sodium</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 0.9.2 bêta</span></div>
+                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 0.9.3 bêta</span></div>
                     <h3 class="h6">Édition et réalisation</h3><p><strong>Sodium Webmail</strong> est un logiciel SaaS conçu, édité et maintenu par <strong>Jessy System</strong>. Il centralise l’accès aux comptes de messagerie attribués aux utilisateurs autorisés dans un environnement professionnel privé.</p>
                     <h3 class="h6">Licence d’exploitation</h3><p>Cette instance est mise à disposition dans le cadre d’une licence d’exploitation SaaS <code><?=e($appLicense['license_type']??'non enregistrée')?></code> concédée à <code><?=e($appLicense['rights_holder']??'ayant droit non enregistré')?></code><?php if(!empty($appLicense['registered_at'])): ?>, enregistrée le <code><?=e(date('d/m/Y',strtotime((string)$appLicense['registered_at'])))?></code><?php endif; ?><?php if(!empty($appLicense['expires_at'])&&$appLicense['expires_at']<'9999-01-01'): ?> et valable jusqu’au <code><?=e(date('d/m/Y',strtotime((string)$appLicense['expires_at'])))?></code><?php elseif(!empty($appLicense['expires_at'])): ?>, pour une durée <code>perpétuelle</code><?php endif; ?>. Elle confère un droit personnel d’accès et d’utilisation du service sur le domaine autorisé, dans les limites fonctionnelles, techniques et contractuelles convenues. Elle n’emporte aucune cession des droits de propriété intellectuelle sur le logiciel.</p>
                     <h3 class="h6">Propriété intellectuelle et étendue des droits</h3><p>L’architecture, le code, l’interface, les développements, les textes, les éléments graphiques, les bases de données et les composants de Sodium demeurent protégés. Sauf autorisation écrite ou exception prévue par la loi, sont interdits la reproduction, la mise à disposition de tiers, la sous-licence, la commercialisation, l’extraction substantielle, l’adaptation ou le contournement des dispositifs techniques de licence. Les droits strictement nécessaires à l’utilisation conforme du logiciel par l’ayant droit demeurent réservés conformément aux dispositions légales applicables.</p>
@@ -207,7 +207,7 @@ function sodium_render_header(string $title): void
                     <h3 class="h6">Protection des données</h3><p>L’ayant droit demeure responsable de la détermination des finalités et des habilitations associées aux traitements réalisés au moyen de Sodium. Les mesures de sécurité, de confidentialité, de sauvegarde et de gestion des incidents doivent être organisées conformément aux rôles effectifs des parties et à la réglementation applicable. Les présentes informations ne remplacent pas un contrat de licence, un accord de niveau de service ou un accord de traitement des données lorsqu’un tel document est requis.</p>
                     <div class="border rounded p-3 bg-body-tertiary"><strong>Copyright © 2026 Jessy System — Tous droits réservés.</strong><br><span class="text-muted">Produit : <code><?=e($appLicense['product_name']??'Sodium Webmail')?></code> · Domaine autorisé : <code><?=e($appLicense['allowed_domain']??'non enregistré')?></code> · Statut : <code><?=e(!empty($appLicense['is_valid'])?'licence active':'activation requise')?></code>.</span></div>
                 </div>
-                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 0.9.2 bêta</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 0.9.3 bêta</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
         </div>
 
@@ -290,7 +290,7 @@ function sodium_render_footer(): void
         <?php if ($accounts): ?>
         <div class="modal fade" id="messageReaderModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable reader-dialog"><div class="modal-content">
-                <div class="modal-header reader-header"><div class="reader-avatar"><i class="bi bi-person"></i></div><div class="min-width-0 flex-grow-1"><h2 class="modal-title h5 text-truncate mb-1" id="readerSubject">Message</h2><div class="reader-sender text-truncate" id="readerSender"></div><div class="small text-muted text-truncate" id="readerMeta"></div></div><span id="readerTags" class="d-flex gap-1 flex-wrap"></span><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header reader-header"><div class="reader-avatar"><i class="bi bi-person"></i></div><div class="min-width-0 flex-grow-1"><h2 class="modal-title h5 text-truncate mb-1" id="readerSubject">Message</h2><div class="reader-sender text-truncate" id="readerSender"></div><div class="small text-muted text-truncate" id="readerReplyTo"></div><div class="small text-muted text-truncate" id="readerMeta"></div></div><span id="readerTags" class="d-flex gap-1 flex-wrap"></span><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body reader-modal-body"><div class="reader-loading text-center py-5" id="readerLoading"><div class="spinner-border text-danger"></div></div><div class="reader-security d-none" id="readerSecurity"><div><i class="bi bi-shield-lock-fill"></i><strong> Votre confidentialité est protégée</strong><span> Les images distantes ont été bloquées pour empêcher le suivi de lecture.</span></div><div class="reader-security-actions"><button class="btn btn-sm btn-outline-primary" type="button" id="readerShowImages">Charger les images</button><button class="btn btn-sm btn-link" type="button" id="readerAlwaysImages">Toujours charger les images de cet expéditeur</button></div></div><div class="reader-surface"><iframe id="readerBody" class="reader-body d-none" sandbox="allow-same-origin" title="Contenu du message"></iframe></div><div id="readerReplies" class="d-none mt-3"></div><div id="readerAttachments" class="reader-attachments"></div><div id="readerAttachmentPreview" class="reader-attachment-preview d-none"><div class="reader-attachment-preview-header"><div><i class="bi bi-eye me-2"></i><strong id="readerAttachmentPreviewName">Aperçu</strong></div><button class="btn btn-sm btn-outline-secondary" type="button" id="readerAttachmentPreviewClose"><i class="bi bi-x-lg"></i> Fermer</button></div><div class="reader-attachment-preview-body" id="readerAttachmentPreviewBody"></div></div></div>
                 <div class="modal-footer reader-footer"><div class="reader-footer-primary"><button class="btn btn-danger" type="button" id="readerReply"><i class="bi bi-reply"></i> Répondre</button><button class="btn btn-outline-danger" type="button" id="readerReplyAll"><i class="bi bi-reply-all"></i> Répondre à tous</button><button class="btn btn-outline-secondary" type="button" id="readerForward"><i class="bi bi-forward"></i> Transférer</button></div><div class="reader-footer-actions"><button class="btn btn-outline-secondary" type="button" data-reader-action="archive"><i class="bi bi-archive"></i> Archiver</button><button class="btn btn-outline-warning" type="button" data-reader-action="junk"><i class="bi bi-exclamation-octagon"></i> Indésirable</button><button class="btn btn-outline-danger" type="button" data-reader-action="trash"><i class="bi bi-trash"></i> Supprimer</button></div><button class="btn btn-outline-secondary ms-auto" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
@@ -744,6 +744,7 @@ function sodium_render_footer(): void
                         updateUnreadBadges(message.unread_status);
                         document.getElementById('readerSubject').textContent = message.subject;
                         document.getElementById('readerSender').textContent = message.from;
+                        document.getElementById('readerReplyTo').textContent = `Répondre à : ${message.reply_to || message.reply_email || message.from}`;
                         document.getElementById('readerMeta').textContent = `À ${message.to || message.account_name} · ${message.date} · ${message.account_name}`;
                         const body = document.getElementById('readerBody');
                         const renderReaderHtml = html => {
@@ -937,16 +938,16 @@ function sodium_render_footer(): void
                 };
                 document.getElementById('readerShowImages')?.addEventListener('click', showReaderImages);
                 document.getElementById('readerAlwaysImages')?.addEventListener('click', async () => {
-                    if (!readerMessage?.reply_email) return;
+                    if (!readerMessage?.sender_email) return;
                     const data = new FormData();
-                    data.set('sender_email', readerMessage.reply_email);
+                    data.set('sender_email', readerMessage.sender_email);
                     const response = await fetch('/api/remote-images.php', {method:'POST', body:data});
                     if (!response.ok) {
                         showClientToast('Impossible d’enregistrer cette préférence.', 'danger');
                         return;
                     }
                     showReaderImages();
-                    showClientToast(`Les images de ${readerMessage.reply_email} seront désormais affichées.`, 'success');
+                    showClientToast(`Les images de ${readerMessage.sender_email} seront désormais affichées.`, 'success');
                 });
                 const composeEscape = value => String(value ?? '').replace(/[&<>"']/g, character => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[character]));
                 const composeFromReader = mode => {
@@ -962,7 +963,10 @@ function sodium_render_footer(): void
                         composeAccount.dispatchEvent(new Event('change'));
                         const toField = document.querySelector('[data-recipient-field][data-required="1"]');
                         const ccField = document.querySelector('[data-recipient-field]:not([data-required])');
-                        if (mode !== 'forward' && replyMessage.reply_email) toField?.dispatchEvent(new CustomEvent('recipient:add', {detail:{email:replyMessage.reply_email,name:replyMessage.from}}));
+                        if (mode !== 'forward' && replyMessage.reply_email) {
+                            const replyName = replyMessage.reply_to_addresses?.[0]?.name || replyMessage.from;
+                            toField?.dispatchEvent(new CustomEvent('recipient:add', {detail:{email:replyMessage.reply_email,name:replyName}}));
+                        }
                         if (mode === 'replyAll') {
                             const excluded = new Set([replyMessage.reply_email, replyMessage.account_email].filter(Boolean).map(email => email.toLowerCase()));
                             const added = new Set();

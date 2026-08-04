@@ -16,9 +16,9 @@ try{
     $message=sodium_fetch_message_content($account,$folder,$uid);
     $message['remote_images_blocked']=str_contains((string)$message['html'],'data-sodium-src=');
     $message['images_allowed']=false;
-    if($message['remote_images_blocked']&&!empty($message['reply_email'])){
+    if($message['remote_images_blocked']&&!empty($message['sender_email'])){
         $imagePreference=$pdo->prepare('SELECT 1 FROM sodium_remote_image_senders WHERE user_id=? AND sender_email=?');
-        $imagePreference->execute([(int)current_user()['id'],strtolower((string)$message['reply_email'])]);
+        $imagePreference->execute([(int)current_user()['id'],strtolower((string)$message['sender_email'])]);
         if($imagePreference->fetchColumn()){
             $message['html']=sodium_unblock_remote_images((string)$message['html']);
             $message['images_allowed']=true;

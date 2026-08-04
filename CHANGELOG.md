@@ -2,11 +2,15 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
-## [Non publié]
+## [0.9.3] — 2026-08-04
 
 ### Maintenance
 
 - ajout d’un manifeste npm déclaratif pour rendre les bibliothèques front-end visibles dans le Dependency graph GitHub.
+
+### Corrections
+
+- prise en compte prioritaire de l’en-tête `Reply-To` lors d’une réponse, avec repli sur `From`, et affichage de l’adresse effective dans la lecture du message.
 
 ## [0.9.2] — 2026-07-31
 
