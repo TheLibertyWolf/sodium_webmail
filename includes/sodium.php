@@ -1538,6 +1538,10 @@ function sodium_sanitize_email_html(string $html, bool $blockRemoteImages = fals
     $html = preg_replace('/\s+on[a-z]+\s*=\s*(".*?"|\'.*?\'|[^\s>]+)/is', '', $html) ?? $html;
     $html = preg_replace('/\s+data-sodium-(?:signature(?:-spacer)?|quote)\s*=\s*(".*?"|\'.*?\'|[^\s>]+)/is', '', $html) ?? $html;
     $html = preg_replace('/(href\s*=\s*["\'])\s*javascript:[^"\']*(["\'])/i', '$1#$2', $html) ?? $html;
+    $html = preg_replace_callback('/<a\b([^>]*)>/i', static function(array $match): string {
+        $attributes=preg_replace('/\s+(?:target|rel)\s*=\s*(?:"[^"]*"|\'[^\']*\'|[^\s>]+)/i','',(string)$match[1])??(string)$match[1];
+        return '<a'.$attributes.' target="_blank" rel="noopener noreferrer">';
+    },$html)??$html;
     $html = preg_replace('/\s+srcset\s*=\s*(".*?"|\'.*?\'|[^\s>]+)/is', '', $html) ?? $html;
     $html = preg_replace('/(src\s*=\s*["\'])\s*javascript:[^"\']*(["\'])/i', '$1$2', $html) ?? $html;
     if ($blockRemoteImages) {
