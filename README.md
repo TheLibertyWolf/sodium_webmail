@@ -63,33 +63,14 @@ Sodium nécessite une base MySQL ou MariaDB dédiée. La base et l’utilisateur
 
 ```text
 ALTER
-ALTER ROUTINE
 CREATE
-CREATE ROUTINE
-CREATE TEMPORARY TABLES
-CREATE VIEW
 DELETE
-DROP
-EVENT
-EXECUTE
-INDEX
 INSERT
-LOCK TABLES
-REFERENCES
 SELECT
-SHOW VIEW
-TRIGGER
 UPDATE
 ```
 
-Exemple à adapter au nom de la base et de l’utilisateur :
-
-```sql
-GRANT ALTER, ALTER ROUTINE, CREATE, CREATE ROUTINE, CREATE TEMPORARY TABLES,
-CREATE VIEW, DELETE, DROP, EVENT, EXECUTE, INDEX, INSERT, LOCK TABLES,
-REFERENCES, SELECT, SHOW VIEW, TRIGGER, UPDATE
-ON sodium_database.* TO 'sodium_user'@'localhost';
-```
+Ces six privilèges couvrent la création initiale des tables, les migrations de colonnes et le fonctionnement courant de Sodium. Aucun droit sur les routines, vues, triggers, événements, tables temporaires ou autres bases n’est requis.
 
 Il n’est pas nécessaire d’accorder des privilèges globaux, la gestion des utilisateurs SQL ou l’accès aux autres bases du serveur.
 

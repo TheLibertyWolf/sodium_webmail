@@ -1530,6 +1530,14 @@ body {
     min-width: 0;
 }
 
+@media (min-width: 992px) {
+    .reader-footer{flex-wrap:nowrap}
+    .reader-footer-primary,.reader-footer-actions{flex-wrap:nowrap}
+    .reader-footer-actions{margin-left:auto}
+    .reader-action-select{width:210px}
+    .reader-close-action{flex:0 0 auto}
+}
+
 .reader-icon-action{width:42px;display:inline-grid;place-items:center}
 .reader-email-copy{padding:0;border:0;background:transparent;color:inherit;text-decoration:underline;text-decoration-style:dotted;cursor:pointer}
 .attachment-upload-copy{min-width:0;flex:1;display:grid;gap:.35rem}
@@ -1670,6 +1678,7 @@ body {
     .reader-footer-primary #readerReply span{display:none}
     .reader-footer-actions{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:.5rem}
     .reader-action-select{width:100%}
+    .reader-close-action{display:none}
 }
 
 .compose-footer,

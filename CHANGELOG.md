@@ -6,6 +6,10 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 ### Renforcement du 8 août 2026
 
+- gestion des adresses mails supplémentaires : limite numérique ou illimitée, formulaire complet identique à l’administration, modification, icône, couleur, label et réglages IMAP/SMTP ;
+- footer de lecture stabilisé sur une ligne en affichage ordinateur, avec bouton Fermer réservé au desktop ;
+- documentation SQL réduite aux six privilèges réellement utilisés par Sodium.
+
 - expiration de session traitée par une redirection vers la connexion, y compris pour les appels API, sans page blanche technique ; durée serveur portée à quatre heures ;
 - téléversement immédiat et individuel des pièces jointes vers un stockage temporaire privé, avec progression par fichier, suppression individuelle et plafond global de 25 Mo ;
 - auto-enregistrement du brouillon toutes les 30 secondes pendant la rédaction ;
