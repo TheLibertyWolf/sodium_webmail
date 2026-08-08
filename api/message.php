@@ -30,7 +30,8 @@ try{
     $message['account_name']=$account['display_name']?:$account['email_address'];
     $message['account_email']=strtolower((string)$account['email_address']);
     foreach($message['attachments'] as &$attachment){
-        $attachment['inline']=!empty($attachment['content_id']);
+        $contentId=trim((string)($attachment['content_id']??''));
+        $attachment['inline']=$contentId!==''&&preg_match('/cid\s*:\s*<?'.preg_quote($contentId,'/').'>?/i',(string)$message['html'])===1;
         $previewMime=sodium_attachment_preview_mime((string)$attachment['name'],(string)$attachment['mime']);
         if($previewMime!==null)$attachment['mime']=$previewMime;
         $baseUrl='/api/attachment.php?account_id='.$accountId.'&folder='.rawurlencode($folder).'&uid='.$uid.'&part='.rawurlencode($attachment['part']);

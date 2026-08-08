@@ -57,8 +57,7 @@ document.querySelectorAll('[data-edit-message]').forEach(row=>{
     row.addEventListener('click',event=>{if(event.target.closest('a,button,form,input,select'))return;edit();});
     row.addEventListener('keydown',event=>{if((event.key==='Enter'||event.key===' ')&&!event.target.closest('a,button,form,input,select')){event.preventDefault();edit();}});
 });
-<?php if(array_filter($messages,static fn(array $message):bool=>$message['status']==='scheduled')):?>
-const scheduleOutboxReload=()=>window.setTimeout(()=>{if(document.querySelector('.modal.show')){scheduleOutboxReload();return;}window.location.reload();},<?= $outboxReloadDelay*1000 ?>);scheduleOutboxReload();
-<?php endif;?>
+const refreshOutboxFrame=async()=>{if(document.querySelector('.modal.show'))return;try{const response=await fetch(location.href,{headers:{'X-Sodium-Partial':'outbox'}});if(!response.ok)return;const documentCopy=new DOMParser().parseFromString(await response.text(),'text/html');const next=documentCopy.querySelector('.table-card .table-responsive');const current=document.querySelector('.table-card .table-responsive');if(next&&current){current.replaceWith(next);next.querySelectorAll('[data-edit-message]').forEach(row=>row.addEventListener('click',event=>{if(event.target.closest('a,button,form,input,select'))return;const form=document.createElement('form');form.method='post';form.action='/composed-action.php';form.innerHTML=`<input name="id" value="${row.dataset.editMessage}"><input name="action" value="edit"><input name="_csrf" value="${document.querySelector('meta[name=csrf-token]')?.content||''}">`;document.body.appendChild(form);form.submit();}));}}catch(error){}};
+window.setInterval(refreshOutboxFrame,<?= $outboxReloadDelay*1000 ?>);
 </script>
 <?php sodium_render_footer(); ?>

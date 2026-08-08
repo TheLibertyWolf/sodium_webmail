@@ -20,14 +20,6 @@ try {
             $refreshedAccounts++;
         }
     }
-    if ($requestedAccountId && $accounts) {
-        $accountName = $accounts[0]['display_name'] ?: $accounts[0]['email_address'];
-        flash('success', 'Le courrier de « ' . $accountName . ' » a été relevé' . ($indexed ? ' et ' . $indexed . ' messages historiques indexés.' : '.'));
-    } else {
-        flash('success', $refreshedAccounts
-            ? 'Le courrier de tous les comptes a été relevé' . ($indexed ? ' et ' . $indexed . ' messages historiques indexés.' : '.')
-            : 'Aucun compte mail configuré à relever.');
-    }
 } catch (Throwable $exception) {
     flash('danger', 'Relève impossible : ' . $exception->getMessage());
 }

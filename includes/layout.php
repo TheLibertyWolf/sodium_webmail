@@ -65,7 +65,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
         <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-        <link href="/css/app.css?v=20260729-01" rel="stylesheet">
+        <link href="/css/app.css?v=20260808-01" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
         <meta name="mobile-web-app-capable" content="yes">
@@ -104,7 +104,7 @@ function sodium_render_header(string $title): void
                 </a>
                 <a class="nav-link <?= sodium_nav_active('/outbox.php') ?>" href="/outbox.php">
                     <i class="bi bi-send"></i><span>Boîte d’envoi</span>
-                    <?php if ($scheduledCount): ?><span class="badge rounded-pill text-bg-primary ms-auto"><?= $scheduledCount ?></span><?php endif; ?>
+                    <span class="badge rounded-pill text-bg-primary ms-auto <?= $scheduledCount?'':'d-none' ?>" data-outbox-count><?= $scheduledCount ?></span>
                 </a>
             </nav>
             <?php endif; ?>
@@ -155,10 +155,11 @@ function sodium_render_header(string $title): void
                 <?php endif; ?>
             <?php endif; ?>
 
-            <?php if ($mailAccounts && (sodium_can('sodium_signatures_view') || sodium_can('sodium_labels_view') || sodium_can('sodium_templates_view') || sodium_can('sodium_settings_view'))): ?>
+            <?php if ($licenseValid): ?>
                 <div class="sidebar-separator"></div>
                 <div class="admin-nav">
                     <div class="module-title">Paramètres</div>
+                    <a class="nav-link <?= sodium_nav_active('/mail-accounts.php') ?>" href="/mail-accounts.php"><i class="bi bi-envelope-at"></i><span>Comptes mails</span></a>
                     <?php if(sodium_can('sodium_signatures_view')): ?><a class="nav-link <?= sodium_nav_active('/signatures.php') ?>" href="/signatures.php"><i class="bi bi-person-vcard"></i><span>Signatures</span></a><?php endif; ?>
                     <?php if(sodium_can('sodium_labels_view')): ?><a class="nav-link <?= sodium_nav_active('/tags.php') ?>" href="/tags.php"><i class="bi bi-tags"></i><span>Tags</span></a><?php endif; ?>
                     <?php if(sodium_can('sodium_templates_view')): ?><a class="nav-link <?= sodium_nav_active('/templates.php') ?>" href="/templates.php"><i class="bi bi-chat-square-text"></i><span>Modèles de réponses</span></a><?php endif; ?>
@@ -171,7 +172,7 @@ function sodium_render_header(string $title): void
                 <div class="admin-nav">
                     <div class="module-title">Administration</div>
                     <?php if (sodium_can('sodium_full_access')): ?><a class="nav-link <?= sodium_nav_active('/admin/users.php') ?>" href="/admin/users.php"><i class="bi bi-people"></i><span>Utilisateurs</span></a><?php endif; ?>
-                    <?php if (sodium_can('sodium_accounts_view')): ?><a class="nav-link <?= sodium_nav_active('/admin/mail-accounts.php') ?>" href="/admin/mail-accounts.php"><i class="bi bi-envelope-at"></i><span>Comptes mails</span></a><?php endif; ?>
+                    <?php if (sodium_can('sodium_accounts_view')): ?><a class="nav-link <?= sodium_nav_active('/admin/mail-accounts.php') ?>" href="/admin/mail-accounts.php"><i class="bi bi-envelope-at"></i><span>Gestion Comptes mails</span></a><?php endif; ?>
                     <?php if (sodium_can('sodium_full_access')): ?><a class="nav-link <?= sodium_nav_active('/admin/settings.php') ?>" href="/admin/settings.php"><i class="bi bi-sliders"></i><span>Paramètres généraux</span></a><?php endif; ?>
                     <?php if (sodium_can('sodium_full_access')): ?><a class="nav-link <?= sodium_nav_active('/admin/security.php') ?>" href="/admin/security.php"><i class="bi bi-shield-lock"></i><span>Paramètres de sécurité</span></a><?php endif; ?>
                     <?php if (sodium_can('licence')): ?><a class="nav-link <?= sodium_nav_active('/admin/license.php') ?>" href="/admin/license.php"><i class="bi bi-key"></i><span>Licence</span></a><?php endif; ?>
@@ -246,9 +247,23 @@ function sodium_render_footer(): void
     $sodiumSettings = sodium_user_settings((int)($user['id'] ?? 0));
     $signatures = [];
     $replyTemplates = [];
+    $readerFolders = [];
+    $readerTags = [];
     $composeDraft = null;
     $hasActiveAutoReply = false;
     if ($accounts) {
+        foreach ($accounts as $readerAccount) {
+            $readerFolders[(int)$readerAccount['id']] = array_map(static fn(array $folder):array=>[
+                'key'=>(string)($folder['key']??''),
+                'label'=>(string)($folder['label']??$folder['key']??''),
+            ], sodium_account_folders($readerAccount));
+        }
+        $readerAccountIds=array_map('intval',array_column($accounts,'id'));
+        $readerTagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(created_by=? OR is_shared=1)';
+        $readerTagStmt=$pdo->prepare('SELECT id,mail_account_id,name,color FROM sodium_tags WHERE mail_account_id IN ('.implode(',',array_fill(0,count($readerAccountIds),'?')).') AND '.$readerTagVisibility.' ORDER BY name');
+        $readerTagParams=$readerAccountIds;if(!sodium_can_manage_all('sodium_labels'))$readerTagParams[]=(int)($user['id']??0);
+        $readerTagStmt->execute($readerTagParams);
+        foreach($readerTagStmt->fetchAll() as $readerTag)$readerTags[(int)$readerTag['mail_account_id']][]=['id'=>(int)$readerTag['id'],'name'=>(string)$readerTag['name'],'color'=>(string)$readerTag['color']];
         $autoReplyAccountIds = array_map('intval', array_column($accounts, 'id'));
         $activeAutoReplyStmt = $pdo->prepare('SELECT 1 FROM sodium_auto_reply_rules r
             INNER JOIN sodium_auto_reply_rule_accounts ra ON ra.rule_id=r.id
@@ -292,7 +307,7 @@ function sodium_render_footer(): void
             <div class="modal-dialog modal-xl modal-dialog-scrollable reader-dialog"><div class="modal-content">
                 <div class="modal-header reader-header"><div class="reader-avatar"><i class="bi bi-person"></i></div><div class="min-width-0 flex-grow-1"><h2 class="modal-title h5 text-truncate mb-1" id="readerSubject">Message</h2><div class="reader-sender text-truncate" id="readerSender"></div><div class="small text-muted text-truncate" id="readerReplyTo"></div><div class="small text-muted text-truncate" id="readerMeta"></div></div><span id="readerTags" class="d-flex gap-1 flex-wrap"></span><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body reader-modal-body"><div class="reader-loading text-center py-5" id="readerLoading"><div class="spinner-border text-danger"></div></div><div class="reader-security d-none" id="readerSecurity"><div><i class="bi bi-shield-lock-fill"></i><strong> Votre confidentialité est protégée</strong><span> Les images distantes ont été bloquées pour empêcher le suivi de lecture.</span></div><div class="reader-security-actions"><button class="btn btn-sm btn-outline-primary" type="button" id="readerShowImages">Charger les images</button><button class="btn btn-sm btn-link" type="button" id="readerAlwaysImages">Toujours charger les images de cet expéditeur</button></div></div><div class="reader-surface"><iframe id="readerBody" class="reader-body d-none" sandbox="allow-same-origin" title="Contenu du message"></iframe></div><div id="readerReplies" class="d-none mt-3"></div><div id="readerAttachments" class="reader-attachments"></div><div id="readerAttachmentPreview" class="reader-attachment-preview d-none"><div class="reader-attachment-preview-header"><div><i class="bi bi-eye me-2"></i><strong id="readerAttachmentPreviewName">Aperçu</strong></div><button class="btn btn-sm btn-outline-secondary" type="button" id="readerAttachmentPreviewClose"><i class="bi bi-x-lg"></i> Fermer</button></div><div class="reader-attachment-preview-body" id="readerAttachmentPreviewBody"></div></div></div>
-                <div class="modal-footer reader-footer"><div class="reader-footer-primary"><button class="btn btn-danger" type="button" id="readerReply"><i class="bi bi-reply"></i> Répondre</button><button class="btn btn-outline-danger" type="button" id="readerReplyAll"><i class="bi bi-reply-all"></i> Répondre à tous</button><button class="btn btn-outline-secondary" type="button" id="readerForward"><i class="bi bi-forward"></i> Transférer</button></div><div class="reader-footer-actions"><button class="btn btn-outline-secondary" type="button" data-reader-action="archive"><i class="bi bi-archive"></i> Archiver</button><button class="btn btn-outline-warning" type="button" data-reader-action="junk"><i class="bi bi-exclamation-octagon"></i> Indésirable</button><button class="btn btn-outline-danger" type="button" data-reader-action="trash"><i class="bi bi-trash"></i> Supprimer</button></div><button class="btn btn-outline-secondary ms-auto" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer reader-footer"><div class="reader-footer-primary"><button class="btn btn-success" type="button" id="readerReply"><i class="bi bi-reply"></i> <span>Répondre</span></button><button class="btn btn-outline-success reader-icon-action" type="button" id="readerReplyAll" title="Répondre à tous" aria-label="Répondre à tous"><i class="bi bi-reply-all"></i></button><button class="btn btn-primary reader-icon-action" type="button" id="readerForward" title="Transférer" aria-label="Transférer"><i class="bi bi-forward"></i></button><button class="btn btn-outline-secondary reader-icon-action" type="button" data-reader-action="archive" title="Archiver" aria-label="Archiver"><i class="bi bi-archive"></i></button><button class="btn btn-outline-warning reader-icon-action" type="button" data-reader-action="junk" title="Indésirable" aria-label="Indésirable"><i class="bi bi-exclamation-octagon"></i></button><button class="btn btn-outline-danger reader-icon-action" type="button" data-reader-action="trash" title="Supprimer" aria-label="Supprimer"><i class="bi bi-trash"></i></button></div><div class="reader-footer-actions"><div class="input-group reader-action-select"><select class="form-select" id="readerMoveFolder" aria-label="Dossier de destination"><option value="">Déplacer vers…</option></select><button class="btn btn-outline-primary" type="button" data-reader-select-action="move" title="Déplacer"><i class="bi bi-folder-symlink"></i></button></div><div class="input-group reader-action-select"><select class="form-select" id="readerAddTag" aria-label="Tag à ajouter"><option value="">Ajouter un tag…</option></select><button class="btn btn-outline-secondary" type="button" data-reader-select-action="tag" title="Ajouter le tag"><i class="bi bi-tag"></i></button></div></div></div>
             </div></div>
         </div>
         <div class="modal fade" id="composeModal" tabindex="-1" aria-hidden="true">
@@ -349,6 +364,8 @@ function sodium_render_footer(): void
                 })();
                 <?php endif; ?>
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+                const readerFolders = <?= json_encode($readerFolders, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
+                const readerTags = <?= json_encode($readerTags, JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;
                 const hasMailAccounts = <?= $accounts ? 'true' : 'false' ?>;
                 const scheduledEditId = <?= (int)((!empty($composeDraft['edit_original_scheduled_at'])) ? $composeDraft['id'] : 0) ?>;
                 let composeSubmissionInProgress = false;
@@ -367,12 +384,13 @@ function sodium_render_footer(): void
                 };
                 window.addEventListener('beforeunload',()=>cancelScheduledEdit(true));
                 const nativeFetch = window.fetch.bind(window);
-                window.fetch = (resource, options = {}) => {
+                window.fetch = async (resource, options = {}) => {
                     const method = String(options.method || 'GET').toUpperCase();
-                    if (method !== 'POST') return nativeFetch(resource, options);
                     const headers = new Headers(options.headers || {});
-                    if (csrfToken) headers.set('X-CSRF-Token', csrfToken);
-                    return nativeFetch(resource, {...options, headers});
+                    if (method === 'POST' && csrfToken) headers.set('X-CSRF-Token', csrfToken);
+                    const response=await nativeFetch(resource,{...options,headers});
+                    if(response.status===401||response.status===419){let target='/login.php?expired=1';try{const payload=await response.clone().json();if(payload.redirect)target=payload.redirect;}catch(error){}window.location.assign(target);throw new Error('SESSION_EXPIRED');}
+                    return response;
                 };
                 document.querySelectorAll('.modal').forEach(modal => modal.setAttribute('data-bs-backdrop', 'static'));
                 const sidebarToggle = document.getElementById('sidebarToggle');
@@ -387,6 +405,7 @@ function sodium_render_footer(): void
                 };
 
                 sidebarToggle?.addEventListener('click', () => {
+                    if(window.matchMedia('(max-width: 575.98px)').matches)return;
                     root.classList.toggle('sidebar-collapsed');
                     try {
                         localStorage.setItem('sodiumSidebarCollapsed', root.classList.contains('sidebar-collapsed') ? '1' : '0');
@@ -451,6 +470,7 @@ function sodium_render_footer(): void
                             badge.classList.toggle('d-none', Number(account.unread || 0) < 1);
                         });
                     });
+                    const outboxBadge=document.querySelector('[data-outbox-count]');if(outboxBadge){outboxBadge.textContent=String(status.outbox_count||0);outboxBadge.classList.toggle('d-none',Number(status.outbox_count||0)<1);}
                 };
 
                 const composeAccount = document.getElementById('composeAccount');
@@ -750,6 +770,10 @@ function sodium_render_footer(): void
                         const message = await response.json();
                         if (!response.ok) throw new Error(message.error || 'Lecture impossible');
                         readerMessage = {...readerMessage, ...message, selection:readerMessage.selection};
+                        const moveSelect=document.getElementById('readerMoveFolder');
+                        const tagSelect=document.getElementById('readerAddTag');
+                        if(moveSelect){moveSelect.innerHTML='<option value="">Déplacer vers…</option>';(readerFolders[String(message.account_id)]||[]).filter(folder=>folder.key!==message.folder).forEach(folder=>{const option=document.createElement('option');option.value=folder.key;option.textContent=folder.label;moveSelect.appendChild(option);});}
+                        if(tagSelect){tagSelect.innerHTML='<option value="">Ajouter un tag…</option>';(readerTags[String(message.account_id)]||[]).forEach(tag=>{const option=document.createElement('option');option.value=String(tag.id);option.textContent=tag.name;tagSelect.appendChild(option);});}
                         const replyAllRecipients = new Set();
                         [message.reply_email, ...(message.to_addresses || []).map(address => address.email), ...(message.cc_addresses || []).map(address => address.email)]
                             .forEach(email => {
@@ -759,13 +783,15 @@ function sodium_render_footer(): void
                         document.getElementById('readerReplyAll')?.classList.toggle('d-none', replyAllRecipients.size <= 1);
                         updateUnreadBadges(message.unread_status);
                         document.getElementById('readerSubject').textContent = message.subject;
-                        document.getElementById('readerSender').textContent = message.from;
-                        document.getElementById('readerReplyTo').textContent = `Répondre à : ${message.reply_to || message.reply_email || message.from}`;
+                        const renderCopyableAddress=(element,value,prefix='')=>{element.textContent='';if(prefix)element.append(document.createTextNode(prefix));const text=String(value||'');const email=text.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i)?.[0];if(!email){element.append(document.createTextNode(text));return;}const before=text.indexOf(email);element.append(document.createTextNode(text.slice(0,before)));const button=document.createElement('button');button.type='button';button.className='reader-email-copy';button.textContent=email;button.title=`Copier ${email}`;button.addEventListener('click',async()=>{try{await navigator.clipboard.writeText(email);showClientToast(`${email} est dans le presse-papiers.`,'info');}catch(error){showClientToast('La copie dans le presse-papiers est indisponible.','warning');}});element.append(button,document.createTextNode(text.slice(before+email.length)));};
+                        renderCopyableAddress(document.getElementById('readerSender'),message.from);
+                        renderCopyableAddress(document.getElementById('readerReplyTo'),message.reply_to || message.reply_email || message.from,'Répondre à : ');
                         document.getElementById('readerMeta').textContent = `À ${message.to || message.account_name} · ${message.date} · ${message.account_name}`;
                         const body = document.getElementById('readerBody');
                         const renderReaderHtml = html => {
                             body.srcdoc = `<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>html,body{margin:0;padding:0;background:#fff;color:#212529}body{padding:24px;font-family:Arial,sans-serif;overflow-wrap:anywhere}img{max-width:100%}table{max-width:100%}@media(max-width:700px){body{padding:14px}}</style></head><body>${html || ''}</body></html>`;
                         };
+                        body.onload=()=>{try{body.style.height=Math.max(320,body.contentDocument.documentElement.scrollHeight,body.contentDocument.body.scrollHeight)+'px';}catch(error){}};
                         renderReaderHtml(message.html);
                         readerMessage.renderHtml = renderReaderHtml;
                         body.classList.remove('d-none');
@@ -937,14 +963,17 @@ function sodium_render_footer(): void
                     const body=document.getElementById('readerBody');
                     if(body)body.srcdoc='';
                 });
-                document.querySelectorAll('[data-reader-action]').forEach(button => button.addEventListener('click', () => {
+                const submitReaderAction = (action, extraFields = {}) => {
                     if (!readerMessage) return;
                     const form = document.createElement('form');
                     form.method = 'post'; form.action = '/bulk-action.php';
-                    const fields = {_csrf:csrfToken, bulk_action:button.dataset.readerAction, return_to:location.pathname+location.search, 'messages[]':readerMessage.selection};
+                    const fields = {_csrf:csrfToken, bulk_action:action, return_to:location.pathname+location.search, 'messages[]':readerMessage.selection, ...extraFields};
                     Object.entries(fields).forEach(([name,value]) => { const input=document.createElement('input');input.type='hidden';input.name=name;input.value=value;form.appendChild(input); });
                     document.body.appendChild(form); form.submit();
-                }));
+                };
+                document.querySelectorAll('[data-reader-action]').forEach(button => button.addEventListener('click', () => submitReaderAction(button.dataset.readerAction)));
+                document.querySelector('[data-reader-select-action="move"]')?.addEventListener('click',()=>{const value=document.getElementById('readerMoveFolder')?.value;if(!value){showClientToast('Choisissez un dossier de destination.','warning');return;}submitReaderAction('move',{target_folder:value});});
+                document.querySelector('[data-reader-select-action="tag"]')?.addEventListener('click',()=>{const value=document.getElementById('readerAddTag')?.value;if(!value){showClientToast('Choisissez un tag.','warning');return;}submitReaderAction('tag',{tag_id:value});});
                 const showReaderImages = () => {
                     if(readerMessage?.html){
                         readerMessage.html=readerMessage.html.replace(/\sdata-sodium-src=(["'])(.*?)\1/gi,' src=$1$2$1');
@@ -1114,24 +1143,29 @@ function sodium_render_footer(): void
                     syncSignatures();
                 });
 
+                const autoDraftForm=document.querySelector('#composeModal form');let autoDraftDirty=false;let autoDraftSaving=false;
+                autoDraftForm?.addEventListener('input',()=>{if(!composeSubmissionInProgress)autoDraftDirty=true;});
+                autoDraftForm?.addEventListener('change',()=>{if(!composeSubmissionInProgress)autoDraftDirty=true;});
+                const saveAutoDraft=async()=>{if(!autoDraftForm||!autoDraftDirty||autoDraftSaving||composeSubmissionInProgress||scheduledEditId||!document.getElementById('composeModal')?.classList.contains('show'))return;const editor=autoDraftForm.querySelector('.rich-editor-content');const textarea=autoDraftForm.querySelector('textarea[name="content"]');if(textarea)textarea.value=editor?.innerHTML||'';if(!(textarea?.value||autoDraftForm.querySelector('[name="subject"]')?.value||autoDraftForm.querySelector('[name="to_email"]')?.value))return;autoDraftSaving=true;try{const response=await fetch('/api/autodraft.php',{method:'POST',body:new FormData(autoDraftForm),headers:{Accept:'application/json'}});const result=await response.json();if(response.ok&&result.ok){const id=autoDraftForm.querySelector('[name="compose_id"]');if(id)id.value=String(result.compose_id);autoDraftDirty=false;}}catch(error){}finally{autoDraftSaving=false;}};
+                window.setInterval(saveAutoDraft,30000);
+                document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden')saveAutoDraft();});
+
                 document.querySelectorAll('.compose-attachments').forEach(panel => {
                     const input = panel.querySelector('.attachment-dropzone input[type="file"]');
                     const list = panel.querySelector('.attachment-file-list');
                     if (!input || !list) return;
                     let dragDepth = 0;
-                    let selectedFiles = [];
-                    const syncInputFiles = () => {
-                        const transfer = new DataTransfer();
-                        selectedFiles.forEach(file => transfer.items.add(file));
-                        input.files = transfer.files;
-                    };
+                    let uploadedFiles = [];
+                    let uploadsRunning = 0;
                     const renderFiles = () => {
                         list.innerHTML = '';
-                        selectedFiles.forEach((file, index) => {
+                        uploadedFiles.forEach((file, index) => {
                             const item = document.createElement('div'); item.className='attachment-file-item';
                             const size = file.size < 1024*1024 ? `${Math.ceil(file.size/1024)} Ko` : `${(file.size/1024/1024).toFixed(1)} Mo`;
-                            const copy = document.createElement('span');
-                            copy.textContent = `${file.name} · ${size}`;
+                            const copy = document.createElement('div');copy.className='attachment-upload-copy';
+                            const label=document.createElement('span');label.textContent=`${file.name} · ${size}`;copy.appendChild(label);
+                            if(file.state==='uploading'){const progress=document.createElement('div');progress.className='progress';progress.setAttribute('role','progressbar');progress.innerHTML=`<div class="progress-bar progress-bar-striped progress-bar-animated" style="width:${file.progress||0}%"></div>`;copy.appendChild(progress);}
+                            if(file.state==='error'){const error=document.createElement('small');error.className='text-danger';error.textContent=file.error||'Échec du chargement';copy.appendChild(error);}
                             const remove = document.createElement('button');
                             remove.type = 'button';
                             remove.className = 'btn btn-sm btn-link text-danger';
@@ -1139,34 +1173,45 @@ function sodium_render_footer(): void
                             remove.setAttribute('aria-label', `Retirer ${file.name}`);
                             remove.innerHTML = '<i class="bi bi-x-lg"></i>';
                             remove.addEventListener('click', () => {
-                                selectedFiles.splice(index, 1);
-                                syncInputFiles();
+                                const removed=uploadedFiles.splice(index,1)[0];
+                                if(removed?.token){const data=new FormData();data.set('action','delete');data.set('token',removed.token);fetch('/api/temp-attachment.php',{method:'POST',body:data,headers:{Accept:'application/json'}}).catch(()=>{});}
                                 renderFiles();
                             });
                             item.append(copy, remove);
                             list.appendChild(item);
                         });
                     };
-                    const addFiles = files => {
+                    const uploadFile = file => new Promise(resolve=>{
+                        const entry={name:file.name,size:file.size,state:'uploading',progress:0,token:''};uploadedFiles.push(entry);uploadsRunning++;renderFiles();
+                        const xhr=new XMLHttpRequest();xhr.open('POST','/api/temp-attachment.php');xhr.responseType='json';xhr.setRequestHeader('Accept','application/json');xhr.setRequestHeader('X-CSRF-Token',csrfToken);
+                        xhr.upload.addEventListener('progress',event=>{if(event.lengthComputable){entry.progress=Math.round(event.loaded/event.total*100);renderFiles();}});
+                        xhr.addEventListener('load',()=>{if(xhr.status===401||xhr.status===419){window.location.assign('/login.php?expired=1');return;}const result=xhr.response||{};if(xhr.status>=200&&xhr.status<300&&result.ok){entry.state='done';entry.progress=100;entry.token=result.token;entry.name=result.name||entry.name;}else{entry.state='error';entry.error=result.error||'Échec du chargement';}uploadsRunning--;renderFiles();resolve();});
+                        xhr.addEventListener('error',()=>{entry.state='error';entry.error='Connexion interrompue';uploadsRunning--;renderFiles();resolve();});
+                        const data=new FormData();data.set('attachment',file,file.name);xhr.send(data);
+                    });
+                    const addFiles = async files => {
                         const additions = Array.from(files);
-                        const totalSize = [...selectedFiles, ...additions].reduce((total, file) => total + file.size, 0);
+                        const totalSize = uploadedFiles.reduce((total, file) => total + file.size, 0)+additions.reduce((total,file)=>total+file.size,0);
                         if (totalSize > 25 * 1024 * 1024) {
                             showClientToast('Les pièces jointes dépassent 25 Mo au total.', 'danger');
                             return;
                         }
-                        selectedFiles.push(...additions);
-                        syncInputFiles();
-                        renderFiles();
+                        input.value='';
+                        for(const file of additions)await uploadFile(file);
                     };
                     input.addEventListener('change', () => {
                         const additions = Array.from(input.files);
-                        syncInputFiles();
                         addFiles(additions);
                     });
                     input.addEventListener('attachments:reset', () => {
-                        selectedFiles = [];
-                        syncInputFiles();
+                        uploadedFiles.forEach(file=>{if(file.token){const data=new FormData();data.set('action','delete');data.set('token',file.token);fetch('/api/temp-attachment.php',{method:'POST',body:data,headers:{Accept:'application/json'}}).catch(()=>{});}});
+                        uploadedFiles = [];
                         renderFiles();
+                    });
+                    panel.closest('form')?.addEventListener('submit',event=>{
+                        if(uploadsRunning||uploadedFiles.some(file=>file.state==='uploading')){event.preventDefault();showClientToast('Patientez jusqu’à la fin du chargement des pièces jointes.','warning');return;}
+                        panel.closest('form').querySelectorAll('input[data-temp-attachment]').forEach(hidden=>hidden.remove());
+                        uploadedFiles.filter(file=>file.state==='done'&&file.token).forEach(file=>{const hidden=document.createElement('input');hidden.type='hidden';hidden.name='attachment_tokens[]';hidden.value=file.token;hidden.dataset.tempAttachment='1';panel.closest('form').appendChild(hidden);});
                     });
                     panel.addEventListener('dragenter', event => {
                         event.preventDefault();
@@ -1251,7 +1296,6 @@ function sodium_render_footer(): void
                     if (mailStatusRunning) return;
                     mailStatusRunning = true;
                     try {
-                        showClientToast('Relève du courrier en cours…', 'info');
                         const refreshData = new FormData();
                         refreshData.set('refresh', '1');
                         const response = await fetch('/api/status.php', {method:'POST', body:refreshData, headers: {'Accept':'application/json'}});
@@ -1265,7 +1309,7 @@ function sodium_render_footer(): void
                             new Notification('Sodium — Nouveau message', {body: delta > 1 ? `${delta} nouveaux messages reçus` : 'Un nouveau message a été reçu', icon: '/assets/icons/pwa-192.png'});
                         }
                         localStorage.setItem('sodiumUnifiedUnread', String(status.unified_unread));
-                        showClientToast('Courrier relevé et compteurs actualisés.', 'success');
+                        if(Number(status.new_messages||0)>0)showClientToast(`${status.new_messages} nouveau${Number(status.new_messages)>1?'x':''} message${Number(status.new_messages)>1?'s':''}.`,'info');
                         const canReload = stored !== null && previous !== status.unified_unread && document.querySelector('[data-message-row]') && !document.querySelector('.modal.show') && !document.querySelector('.message-checkbox:checked') && !document.querySelector('.rich-editor-content:focus');
                         if (canReload) window.location.reload();
                     } catch (error) {

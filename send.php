@@ -41,7 +41,9 @@ foreach (array_merge($recipients, $cc, $bcc) as $recipient) {
     }
 }
 
-$attachments=[];$totalSize=0;
+$attachments=[];$totalSize=0;$temporaryAttachments=[];
+try{$temporaryAttachments=sodium_take_temp_uploads((array)($_POST['attachment_tokens']??[]),(int)current_user()['id']);}catch(Throwable $exception){flash('danger',$exception->getMessage());redirect('/index.php');}
+foreach($temporaryAttachments as $file){$totalSize+=strlen((string)$file['data']);$attachments[]=$file;}
 if(!empty($_FILES['attachments']['tmp_name'])&&is_array($_FILES['attachments']['tmp_name'])){
     foreach($_FILES['attachments']['tmp_name'] as $index=>$tmp){
         if(!is_uploaded_file($tmp)||($_FILES['attachments']['error'][$index]??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK)continue;
@@ -119,9 +121,11 @@ if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send
         $stmt->execute([(int)current_user()['id'],$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null]);
     }
     if($composeAction==='send'){
+        sodium_delete_temp_uploads($temporaryAttachments);
         flash('success','Message placé en attente pendant '.$sendDelay.' seconde'.($sendDelay>1?'s':'').'. Vous pouvez encore l’annuler depuis la boîte d’envoi.');
         redirect($returnTo);
     }
+    sodium_delete_temp_uploads($temporaryAttachments);
     flash('success',$composeAction==='draft'?'Brouillon enregistré.':'Envoi programmé pour le '.$scheduledDate->format('d/m/Y à H:i').'.');
     redirect($returnTo);
 }

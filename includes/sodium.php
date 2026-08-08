@@ -240,6 +240,18 @@ function sodium_ensure_schema(): void
     sodium_ensure_column('sodium_composed_messages', 'edit_original_scheduled_at', 'DATETIME NULL');
     sodium_ensure_column('sodium_composed_messages', 'edit_original_undo_until', 'DATETIME NULL');
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_temp_uploads (
+        token CHAR(64) PRIMARY KEY,
+        user_id INT NOT NULL,
+        original_name VARCHAR(255) NOT NULL,
+        mime_type VARCHAR(190) NOT NULL,
+        file_size BIGINT UNSIGNED NOT NULL,
+        storage_name VARCHAR(190) NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        expires_at DATETIME NOT NULL,
+        INDEX idx_sodium_temp_user (user_id,expires_at)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_reply_templates (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
@@ -304,6 +316,12 @@ function sodium_ensure_schema(): void
     sodium_ensure_column('users','twofa_secret','VARCHAR(100) NULL');
     sodium_ensure_column('users','password_reset_hash','VARCHAR(255) NULL');
     sodium_ensure_column('users','password_reset_expires_at','DATETIME NULL');
+    sodium_ensure_column('users','sodium_personal_account_limit','INT UNSIGNED NOT NULL DEFAULT 0');
+    sodium_ensure_column('users','sodium_personal_excluded_domains','TEXT NULL');
+    sodium_ensure_column('users','sodium_personal_excluded_addresses','TEXT NULL');
+    sodium_ensure_column('sodium_mail_accounts','created_by_user_id','INT NULL');
+    sodium_ensure_column('sodium_mail_accounts','is_user_managed','TINYINT(1) NOT NULL DEFAULT 0');
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_banned_mail_addresses(email_address VARCHAR(190) PRIMARY KEY,banned_by_user_id INT NOT NULL,created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     $ready = true;
 }
 
@@ -324,6 +342,42 @@ function sodium_ensure_column(string $table, string $column, string $definition)
     if (!(int) $stmt->fetchColumn()) {
         $pdo->exec("ALTER TABLE `{$table}` ADD COLUMN `{$column}` {$definition}");
     }
+}
+
+function sodium_temp_upload_directory(): string
+{
+    $directory = rtrim(sys_get_temp_dir(), DIRECTORY_SEPARATOR) . DIRECTORY_SEPARATOR . 'sodium-' . substr(hash('sha256', __DIR__), 0, 16);
+    if (!is_dir($directory) && !mkdir($directory, 0700, true) && !is_dir($directory)) throw new RuntimeException('Stockage temporaire indisponible.');
+    return $directory;
+}
+
+function sodium_cleanup_temp_uploads(): void
+{
+    global $pdo;
+    $stmt=$pdo->query('SELECT token,storage_name FROM sodium_temp_uploads WHERE expires_at<NOW() LIMIT 200');
+    foreach($stmt->fetchAll() as $row){@unlink(sodium_temp_upload_directory().DIRECTORY_SEPARATOR.basename((string)$row['storage_name']));$pdo->prepare('DELETE FROM sodium_temp_uploads WHERE token=?')->execute([(string)$row['token']]);}
+}
+
+function sodium_take_temp_uploads(array $tokens, int $userId): array
+{
+    global $pdo;
+    $files=[];$total=0;
+    $stmt=$pdo->prepare('SELECT * FROM sodium_temp_uploads WHERE token=? AND user_id=? AND expires_at>=NOW()');
+    foreach(array_slice(array_values(array_unique($tokens)),0,30) as $token){
+        if(!is_string($token)||!preg_match('/^[a-f0-9]{64}$/',$token))continue;
+        $stmt->execute([$token,$userId]);$row=$stmt->fetch();if(!$row)continue;
+        $path=sodium_temp_upload_directory().DIRECTORY_SEPARATOR.basename((string)$row['storage_name']);if(!is_file($path))continue;
+        $total+=(int)$row['file_size'];if($total>25*1024*1024)throw new RuntimeException('Les pièces jointes dépassent 25 Mo au total.');
+        $files[]=['name'=>(string)$row['original_name'],'type'=>(string)$row['mime_type'],'data'=>(string)file_get_contents($path),'_token'=>$token,'_path'=>$path];
+    }
+    return $files;
+}
+
+function sodium_delete_temp_uploads(array $files): void
+{
+    global $pdo;
+    $stmt=$pdo->prepare('DELETE FROM sodium_temp_uploads WHERE token=?');
+    foreach($files as $file){if(empty($file['_token']))continue;@unlink((string)$file['_path']);$stmt->execute([(string)$file['_token']]);}
 }
 
 function sodium_secret_key(): string

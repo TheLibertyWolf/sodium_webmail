@@ -4,6 +4,17 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 ## [0.9.3] — 2026-08-04
 
+### Renforcement du 8 août 2026
+
+- expiration de session traitée par une redirection vers la connexion, y compris pour les appels API, sans page blanche technique ; durée serveur portée à quatre heures ;
+- téléversement immédiat et individuel des pièces jointes vers un stockage temporaire privé, avec progression par fichier, suppression individuelle et plafond global de 25 Mo ;
+- auto-enregistrement du brouillon toutes les 30 secondes pendant la rédaction ;
+- compteurs de courrier et de boîte d’envoi synchronisés en direct, relève silencieuse hors nouveaux messages et actualisation partielle de la boîte d’envoi ;
+- lecture et rédaction longues sans double barre de défilement, actions de lecture réorganisées et adaptées au mobile ;
+- copie d’une adresse mail depuis l’en-tête de lecture avec confirmation par toast ;
+- ajout des comptes mails personnels avec quota par utilisateur, exclusions de domaines/adresses, séparation des comptes imposés et bannissement administratif ;
+- contrôle des autorisations renforcé : chaque identifiant reçu reste vérifié contre l’utilisateur et ses comptes accessibles ; les nouveaux fichiers temporaires utilisent des jetons aléatoires de 256 bits.
+
 ### Maintenance
 
 - ajout d’un manifeste npm déclaratif pour rendre les bibliothèques front-end visibles dans le Dependency graph GitHub.
@@ -13,6 +24,11 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 - prise en compte prioritaire de l’en-tête `Reply-To` lors d’une réponse, avec repli sur `From`, et affichage de l’adresse effective dans la lecture du message.
 - retour automatique à la page d’origine après un envoi ou une réponse, sans redirection vers la boîte d’envoi ;
 - placement automatique du curseur dans le corps du message à l’ouverture d’une rédaction ou d’une réponse.
+- distinction entre les véritables ressources intégrées au corps et les pièces jointes possédant un `Content-ID`, afin que ces dernières restent visibles et téléchargeables.
+
+### Ajouts
+
+- actions « Déplacer vers » et « Ajouter un tag » directement dans la modal de lecture d’un message.
 
 ## [0.9.2] — 2026-07-31
 

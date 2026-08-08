@@ -8,11 +8,19 @@ define('DB_HOST',(string)$local['db_host']);define('DB_NAME',(string)$local['db_
 define('APP_NAME','Sodium');define('BASE_URL',rtrim((string)$local['base_url'],'/'));define('TURNSTILE_ENABLED',(bool)($local['turnstile_enabled']??((string)$local['turnstile_site_key']!==''&&(string)$local['turnstile_secret_key']!=='')));define('TURNSTILE_SITE_KEY',(string)$local['turnstile_site_key']);define('TURNSTILE_SECRET_KEY',(string)$local['turnstile_secret_key']);define('REMEMBER_COOKIE_NAME','sodium_remember');define('REMEMBER_COOKIE_DAYS',30);define('MAIL_CRON_TOKEN',(string)($local['cron_token']??''));define('BILLING_CRON_TOKEN',MAIL_CRON_TOKEN);
 define('SODIUM_APP_NAME',(string)($local['app_name']??'Sodium'));define('SODIUM_BASE_URL',BASE_URL);define('SODIUM_DISTRIBUTION',true);define('SODIUM_LICENSE_PRODUCT_SLUG','sodium-webmail');define('SODIUM_LICENSE_DOMAIN',strtolower((string)(parse_url(BASE_URL,PHP_URL_HOST)?:($_SERVER['HTTP_HOST']??''))));
 date_default_timezone_set((string)($local['timezone']??'Europe/Paris'));
-if(session_status()===PHP_SESSION_NONE){session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);session_start();}
+if(session_status()===PHP_SESSION_NONE){ini_set('session.gc_maxlifetime','14400');session_set_cookie_params(['lifetime'=>0,'path'=>'/','secure'=>true,'httponly'=>true,'samesite'=>'Lax']);session_start();}
 header('Strict-Transport-Security: max-age=31536000; includeSubDomains');header('X-Frame-Options: SAMEORIGIN');header('X-Content-Type-Options: nosniff');header('Referrer-Policy: strict-origin-when-cross-origin');header('Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(), usb=()');header("Content-Security-Policy: default-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'self'; object-src 'none'; script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:; img-src 'self' data: blob: https:; connect-src 'self'; frame-src 'self' blob: https://challenges.cloudflare.com");
 try{$pdo=new PDO('mysql:host='.DB_HOST.';dbname='.DB_NAME.';charset=utf8mb4',DB_USER,DB_PASS,[PDO::ATTR_ERRMODE=>PDO::ERRMODE_EXCEPTION,PDO::ATTR_DEFAULT_FETCH_MODE=>PDO::FETCH_ASSOC,PDO::ATTR_EMULATE_PREPARES=>false]);$pdo->exec("SET time_zone = ".$pdo->quote(date('P')));}catch(PDOException $e){http_response_code(500);exit('Connexion à la base impossible. Corrigez config.local.php ou relancez l’installation.');}
 require_once __DIR__.'/includes/platform/functions.php';require_once __DIR__.'/includes/platform/mail-lib.php';require_once __DIR__.'/includes/sodium.php';sodium_ensure_schema();
 if(empty($_SESSION['sodium_csrf_token']))$_SESSION['sodium_csrf_token']=bin2hex(random_bytes(32));
 function sodium_csrf_token():string{return (string)($_SESSION['sodium_csrf_token']??'');}
-function sodium_verify_csrf():void{if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')return;$provided=(string)($_POST['_csrf']??($_SERVER['HTTP_X_CSRF_TOKEN']??''));if($provided!==''&&hash_equals(sodium_csrf_token(),$provided))return;http_response_code(419);exit('Session expirée. Rechargez la page puis réessayez.');}
+function sodium_verify_csrf():void{
+    if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')return;
+    $provided=(string)($_POST['_csrf']??($_SERVER['HTTP_X_CSRF_TOKEN']??''));
+    if($provided!==''&&hash_equals(sodium_csrf_token(),$provided))return;
+    $login='/login.php?expired=1';
+    $expectsJson=str_contains(strtolower((string)($_SERVER['HTTP_ACCEPT']??'')),'application/json')||str_starts_with((string)($_SERVER['SCRIPT_NAME']??''),'/api/');
+    if($expectsJson){http_response_code(419);header('Content-Type: application/json; charset=UTF-8');echo json_encode(['ok'=>false,'error'=>'Votre session a expiré.','redirect'=>$login],JSON_UNESCAPED_UNICODE);exit;}
+    header('Location: '.$login,true,303);exit;
+}
 sodium_verify_csrf();ob_start(static function(string $html):string{if(!str_contains($html,'<form'))return $html;$token=htmlspecialchars(sodium_csrf_token(),ENT_QUOTES,'UTF-8');return preg_replace_callback('/<form\b([^>]*)>/i',static fn(array $m):string=>preg_match('/\bmethod\s*=\s*(["\']?)post\1/i',$m[1])?$m[0].'<input type="hidden" name="_csrf" value="'.$token.'">':$m[0],$html)??$html;});sodium_enforce_license();

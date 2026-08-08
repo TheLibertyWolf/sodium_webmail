@@ -18,6 +18,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         http_response_code(403);
         exit('Gestion des comptes mails non autorisée.');
     }
+    if(in_array($_POST['action']??'',['delete_user_account','ban_user_account'],true)){
+        $id=(int)($_POST['id']??0);$stmt=$pdo->prepare('SELECT email_address,icon_path FROM sodium_mail_accounts WHERE id=? AND is_user_managed=1');$stmt->execute([$id]);$target=$stmt->fetch();
+        if($target){$pdo->beginTransaction();try{if($_POST['action']==='ban_user_account')$pdo->prepare('INSERT IGNORE INTO sodium_banned_mail_addresses(email_address,banned_by_user_id) VALUES(?,?)')->execute([strtolower((string)$target['email_address']),(int)current_user()['id']]);$pdo->prepare('DELETE FROM sodium_user_mail_accounts WHERE mail_account_id=?')->execute([$id]);$pdo->prepare('DELETE FROM sodium_mail_accounts WHERE id=? AND is_user_managed=1')->execute([$id]);$pdo->commit();if(!empty($target['icon_path'])&&str_starts_with((string)$target['icon_path'],'/uploads/mail-icons/'))@unlink(__DIR__.'/..'.(string)$target['icon_path']);flash('success',$_POST['action']==='ban_user_account'?'Compte supprimé et adresse interdite.':'Compte personnel supprimé.');}catch(Throwable $error){if($pdo->inTransaction())$pdo->rollBack();flash('danger','Suppression impossible.');}}
+        redirect('/admin/mail-accounts.php');
+    }
     $id = (int) ($_POST['id'] ?? 0);
     if (($_POST['action'] ?? '') === 'refresh') {
         sodium_refresh_account_cache($id, true);
@@ -100,9 +105,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     redirect('/admin/mail-accounts.php');
 }
 
-$accounts = $pdo->query('SELECT a.*,
+$allAccounts = $pdo->query('SELECT a.*,
     (SELECT COUNT(*) FROM sodium_user_mail_accounts uma WHERE uma.mail_account_id=a.id) assigned_users
     FROM sodium_mail_accounts a ORDER BY a.display_name, a.email_address')->fetchAll();
+$accounts=array_values(array_filter($allAccounts,static fn(array $account):bool=>empty($account['is_user_managed'])));
+$userAccounts=array_values(array_filter($allAccounts,static fn(array $account):bool=>!empty($account['is_user_managed'])));
 $blankAccount = [
     'id' => '', 'email_address' => '', 'display_name' => '', 'imap_host' => 'localhost', 'imap_port' => 993,
     'imap_encryption' => 'ssl', 'smtp_host' => 'localhost', 'smtp_port' => 465, 'smtp_encryption' => 'ssl',
@@ -110,7 +117,7 @@ $blankAccount = [
     'icon_path' => null, 'unread_count' => 0, 'quota_used_kb' => null, 'quota_limit_kb' => null, 'last_error' => null,
 ];
 
-sodium_render_header('Comptes mails');
+sodium_render_header('Gestion Comptes mails');
 ?>
 <div class="d-flex justify-content-end mb-3">
     <?php if ($canManage): ?><button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#mailAccountNew"><i class="bi bi-plus-lg"></i> Ajouter</button><?php endif; ?>
@@ -150,6 +157,7 @@ sodium_render_header('Comptes mails');
         </table>
     </div>
 </div>
+<div class="table-card mt-4"><div class="p-3 border-bottom"><h2 class="h6 mb-0">Adresses mails ajoutées par les utilisateurs autorisés</h2></div><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Compte</th><th>Utilisateur</th><th>Statut</th><th></th></tr></thead><tbody><?php if(!$userAccounts):?><tr><td colspan="4" class="text-center text-muted py-4">Aucun compte ajouté par un utilisateur.</td></tr><?php endif;?><?php foreach($userAccounts as $userAccount):?><tr><td><strong><?=e($userAccount['display_name']?:$userAccount['email_address'])?></strong><small class="d-block text-muted"><?=e($userAccount['email_address'])?></small></td><td>Utilisateur <?= (int)$userAccount['created_by_user_id'] ?></td><td><span class="badge text-bg-<?=empty($userAccount['last_error'])?'success':'danger'?>"><?=empty($userAccount['last_error'])?'Connecté':'Erreur'?></span></td><td class="text-end"><div class="btn-group btn-group-sm"><form method="post" onsubmit="return confirm('Supprimer ce compte personnel ?')"><input type="hidden" name="action" value="delete_user_account"><input type="hidden" name="id" value="<?=(int)$userAccount['id']?>"><button class="btn btn-outline-danger" title="Supprimer"><i class="bi bi-trash"></i></button></form><form method="post" onsubmit="return confirm('Supprimer et interdire cette adresse ?')"><input type="hidden" name="action" value="ban_user_account"><input type="hidden" name="id" value="<?=(int)$userAccount['id']?>"><button class="btn btn-danger" title="Supprimer et bannir"><i class="bi bi-slash-circle"></i></button></form></div></td></tr><?php endforeach;?></tbody></table></div></div>
 <?php foreach (array_merge([$blankAccount], $accounts) as $account): $isNew = empty($account['id']); $modalId = $isNew ? 'mailAccountNew' : 'mailAccount' . (int) $account['id']; ?>
 <div class="modal fade" id="<?= e($modalId) ?>" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content"><form method="post" enctype="multipart/form-data">

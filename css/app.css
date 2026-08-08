@@ -1387,7 +1387,7 @@ body {
 .reader-body {
     width: 100%;
     min-height: 320px;
-    height: min(68vh, 820px);
+    height: 320px;
     border: 0;
     background: #fff;
     color-scheme: light;
@@ -1522,6 +1522,19 @@ body {
     background: var(--bs-body-bg);
 }
 
+.reader-action-select {
+    width: min(240px, 100%);
+}
+
+.reader-action-select .form-select {
+    min-width: 0;
+}
+
+.reader-icon-action{width:42px;display:inline-grid;place-items:center}
+.reader-email-copy{padding:0;border:0;background:transparent;color:inherit;text-decoration:underline;text-decoration-style:dotted;cursor:pointer}
+.attachment-upload-copy{min-width:0;flex:1;display:grid;gap:.35rem}
+.attachment-upload-copy .progress{height:5px}
+
 [data-bs-theme="dark"] .reader-surface {
     box-shadow: 0 12px 34px rgba(0, 0, 0, .28);
 }
@@ -1642,9 +1655,21 @@ body {
 
 .compose-dialog .rich-editor-content {
     min-height: 430px;
+    height: auto;
+    overflow: visible;
     color: #212529;
     background: #fff;
     color-scheme: light;
+}
+
+@media (max-width: 575.98px) {
+    .sidebar-toggle{display:none!important}
+    .reader-footer{display:grid;gap:.65rem;padding:.65rem}
+    .reader-footer-primary{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));width:100%;gap:.35rem}
+    .reader-footer-primary .btn{width:100%;min-width:0;padding:.45rem .2rem}
+    .reader-footer-primary #readerReply span{display:none}
+    .reader-footer-actions{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:.5rem}
+    .reader-action-select{width:100%}
 }
 
 .compose-footer,
