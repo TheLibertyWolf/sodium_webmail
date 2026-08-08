@@ -1209,7 +1209,7 @@ function sodium_render_footer(): void
                         renderFiles();
                     });
                     panel.closest('form')?.addEventListener('submit',event=>{
-                        if(uploadsRunning||uploadedFiles.some(file=>file.state==='uploading')){event.preventDefault();showClientToast('Patientez jusqu’à la fin du chargement des pièces jointes.','warning');return;}
+                        if(uploadsRunning||uploadedFiles.some(file=>file.state==='uploading')){event.preventDefault();composeSubmissionInProgress=false;showClientToast('Patientez jusqu’à la fin du chargement des pièces jointes.','warning');return;}
                         panel.closest('form').querySelectorAll('input[data-temp-attachment]').forEach(hidden=>hidden.remove());
                         uploadedFiles.filter(file=>file.state==='done'&&file.token).forEach(file=>{const hidden=document.createElement('input');hidden.type='hidden';hidden.name='attachment_tokens[]';hidden.value=file.token;hidden.dataset.tempAttachment='1';panel.closest('form').appendChild(hidden);});
                     });
