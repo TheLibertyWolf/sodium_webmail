@@ -65,7 +65,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
         <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-        <link href="/css/app.css?v=20260812-01" rel="stylesheet">
+        <link href="/css/app.css?v=20260812-02" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
         <meta name="mobile-web-app-capable" content="yes">
@@ -752,6 +752,7 @@ function sodium_render_footer(): void
                 document.getElementById('readerAttachmentPreviewClose')?.addEventListener('click', closeAttachmentPreview);
                 const openMessage = async row => {
                     if (!readerModal) return;
+                    document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => bootstrap.Tooltip.getInstance(element)?.hide());
                     readerMessage = {account_id: row.dataset.account, folder: row.dataset.folder, uid: row.dataset.uid, selection: row.querySelector('.message-checkbox')?.value || ''};
                     document.getElementById('readerLoading').classList.remove('d-none');
                     const readerBody = document.getElementById('readerBody');

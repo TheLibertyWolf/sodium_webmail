@@ -11,6 +11,11 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 - alignement corrigé de l’option « Partager avec les utilisateurs du compte » dans les fenêtres d’ajout et de modification des modèles de réponse ;
 - ouverture systématique des liens contenus dans les messages et les réponses dans un nouvel onglet sécurisé.
 
+### Corrections
+
+- suppression du défilement horizontal des dossiers vides sur mobile ;
+- fermeture de l’infobulle des destinataires avant l’ouverture d’un message envoyé afin qu’elle ne recouvre plus la fenêtre de lecture.
+
 ## [0.9.3] — 2026-08-04
 
 ### Renforcement du 8 août 2026

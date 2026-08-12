@@ -912,6 +912,10 @@ body {
     text-align: left;
 }
 
+.recipient-list-tooltip {
+    z-index: 1040;
+}
+
 .recipient-tooltip-line {
     display: grid;
     grid-template-columns: 2rem max-content;
@@ -1843,6 +1847,27 @@ html.sidebar-collapsed .sidebar .nav-link {
 }
 
 @media (max-width: 900px) {
+    .mail-page-shell,
+    .mail-toolbar,
+    .mail-empty-content {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .mail-page-shell {
+        overflow-x: hidden;
+    }
+
+    .mail-toolbar > * {
+        min-width: 0;
+        max-width: 100%;
+    }
+
+    .mail-empty-content {
+        padding-inline: 18px;
+        overflow-wrap: anywhere;
+    }
+
     .sidebar,
     html.sidebar-collapsed .sidebar {
         z-index: 1045;
