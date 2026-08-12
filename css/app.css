@@ -862,6 +862,68 @@ body {
     white-space: nowrap;
 }
 
+.message-recipient-summary {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+}
+
+.recipient-type-badge {
+    flex: 0 0 auto;
+    font-size: .68rem;
+}
+
+.message-recipient-identity {
+    min-width: 0;
+    overflow: hidden;
+    display: flex;
+    align-items: baseline;
+    gap: .3rem;
+}
+
+.message-recipient-name,
+.message-recipient-email {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.message-recipient-name {
+    flex: 0 1 auto;
+}
+
+.message-recipient-email {
+    flex: 1 1 auto;
+    color: var(--bs-secondary-color);
+    font-size: .78rem;
+}
+
+.recipient-extra-count {
+    flex: 0 0 auto;
+}
+
+.recipient-list-tooltip .tooltip-inner {
+    max-width: min(420px, calc(100vw - 2rem));
+    padding: .6rem .7rem;
+    text-align: left;
+}
+
+.recipient-tooltip-line {
+    display: grid;
+    grid-template-columns: 2.3rem minmax(0, 1fr);
+    align-items: start;
+    gap: .45rem;
+}
+
+.recipient-tooltip-line + .recipient-tooltip-line {
+    margin-top: .35rem;
+}
+
+.recipient-tooltip-line .badge {
+    width: 2.3rem;
+}
+
 .message-subject {
     min-width: 0;
     display: flex;

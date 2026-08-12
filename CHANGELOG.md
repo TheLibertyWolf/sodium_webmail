@@ -2,6 +2,15 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [0.9.4] — 2026-08-09
+
+### Améliorations
+
+- affichage des destinataires dans les dossiers individuels « Envoyés » : destinataire principal précédé du label « À », compteur compact des `Cc`/`Cci` et infobulle détaillée colorée ;
+- regroupement des réglages de réception, d’envoi et de réponses dans une card unique avec un bouton d’enregistrement commun ;
+- alignement corrigé de l’option « Partager avec les utilisateurs du compte » dans les fenêtres d’ajout et de modification des modèles de réponse ;
+- ouverture systématique des liens contenus dans les messages et les réponses dans un nouvel onglet sécurisé.
+
 ## [0.9.3] — 2026-08-04
 
 ### Renforcement du 8 août 2026
@@ -25,7 +34,6 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 ### Corrections
 
-- ouverture systématique des liens contenus dans les messages et les réponses dans un nouvel onglet sécurisé, sans navigation dans la fenêtre de lecture ;
 - prise en compte prioritaire de l’en-tête `Reply-To` lors d’une réponse, avec repli sur `From`, et affichage de l’adresse effective dans la lecture du message.
 - retour automatique à la page d’origine après un envoi ou une réponse, sans redirection vers la boîte d’envoi ;
 - placement automatique du curseur dans le corps du message à l’ouverture d’une rédaction ou d’une réponse.

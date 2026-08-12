@@ -44,16 +44,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success','Réponse automatique enregistrée.');
         redirect('/messages.php');
     }
-    $currentSettings=sodium_user_settings($currentUserId);
-    $settingsAction=(string)($_POST['action']??'settings');
-    $interval = $settingsAction==='reception' ? (int)($_POST['refresh_interval'] ?? 1) : (int)$currentSettings['refresh_interval'];
+    $interval = (int)($_POST['refresh_interval'] ?? 1);
     if (!in_array($interval, $allowedIntervals, true)) $interval = 1;
-    $sendDelay=$settingsAction==='sending'?(int)($_POST['send_delay']??10):(int)$currentSettings['send_delay'];
+    $sendDelay=(int)($_POST['send_delay']??10);
     if(!in_array($sendDelay,$allowedSendDelays,true))$sendDelay=10;
-    $quoteReply = $settingsAction==='replies' ? (!empty($_POST['quote_reply']) ? 1 : 0) : (int)$currentSettings['quote_reply'];
-    $signaturePosition = $settingsAction==='replies' && in_array($_POST['signature_position'] ?? '', ['before_quote','after_quote'], true)
+    $quoteReply = !empty($_POST['quote_reply']) ? 1 : 0;
+    $signaturePosition = in_array($_POST['signature_position'] ?? '', ['before_quote','after_quote'], true)
         ? (string)$_POST['signature_position']
-        : (string)$currentSettings['signature_position'];
+        : 'before_quote';
     $pdo->prepare('INSERT INTO sodium_user_settings (user_id,refresh_interval,send_delay,quote_reply,signature_position)
         VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE refresh_interval=VALUES(refresh_interval),send_delay=VALUES(send_delay),
         quote_reply=VALUES(quote_reply),signature_position=VALUES(signature_position),updated_at=NOW()')
@@ -70,32 +68,28 @@ $blankRule=['id'=>0,'name'=>'','enabled'=>1,'applies_all'=>0,'starts_at'=>'','en
 sodium_render_header('Messages');
 ?>
 <div class="table-card">
-    <form method="post"><input type="hidden" name="action" value="reception">
+    <form method="post"><input type="hidden" name="action" value="settings">
         <div class="p-4 border-bottom">
-            <h2 class="h5 mb-1"><i class="bi bi-arrow-repeat me-2"></i>Réception du courrier</h2>
-            <p class="text-muted mb-0">Actualisation automatique tant que Sodium est ouvert.</p>
+            <h2 class="h5 mb-1"><i class="bi bi-sliders me-2"></i>Réglages des messages</h2>
+            <p class="text-muted mb-0">Configurez la réception du courrier, l’envoi et le comportement des réponses.</p>
         </div>
         <div class="p-4 border-bottom">
+            <h3 class="h6 mb-1"><i class="bi bi-arrow-repeat me-2"></i>Réception du courrier</h3>
+            <p class="text-muted mb-3">Actualisation automatique tant que Sodium est ouvert.</p>
             <label class="form-label" for="refreshInterval">Délai de relève du courrier</label>
             <select class="form-select" id="refreshInterval" name="refresh_interval" <?= $canManage?'':'disabled' ?>>
                 <?php foreach($allowedIntervals as $minutes): ?><option value="<?= $minutes ?>" <?= (int)$settings['refresh_interval']===$minutes?'selected':'' ?>><?= $minutes ?> minute<?= $minutes>1?'s':'' ?></option><?php endforeach; ?>
             </select>
             <div class="form-text">Les nouveaux messages actualisent les compteurs et peuvent déclencher une notification système.</div>
         </div>
-        <?php if($canManage): ?><div class="p-3 d-flex justify-content-end"><button class="btn btn-danger" type="submit"><i class="bi bi-check-lg"></i> Enregistrer</button></div><?php endif; ?>
-    </form>
-</div>
-<div class="table-card mt-4">
-    <form method="post"><input type="hidden" name="action" value="sending">
-        <div class="p-4 border-bottom"><h2 class="h5 mb-1"><i class="bi bi-send me-2"></i>Envoi</h2><p class="text-muted mb-0">Délai de sécurité pendant lequel un message peut encore être annulé.</p></div>
-        <div class="p-4 border-bottom"><label class="form-label" for="sendDelay">Délai avant envoi</label><select class="form-select" id="sendDelay" name="send_delay" <?= $canManage?'':'disabled' ?>><?php foreach($allowedSendDelays as $seconds):?><option value="<?=$seconds?>" <?= (int)$settings['send_delay']===$seconds?'selected':'' ?>><?=$seconds?> seconde<?=$seconds>1?'s':''?></option><?php endforeach;?></select><div class="form-text">La boîte d’envoi s’actualise automatiquement une seconde après ce délai.</div></div>
-        <?php if($canManage):?><div class="p-3 d-flex justify-content-end"><button class="btn btn-danger"><i class="bi bi-check-lg"></i> Enregistrer</button></div><?php endif;?>
-    </form>
-</div>
-<div class="table-card mt-4">
-    <form method="post"><input type="hidden" name="action" value="replies">
-        <div class="p-4 border-bottom"><h2 class="h5 mb-1"><i class="bi bi-reply me-2"></i>Réponses</h2><p class="text-muted mb-0">Comportement du rédacteur lors d’une réponse à un message.</p></div>
         <div class="p-4 border-bottom">
+            <h3 class="h6 mb-1"><i class="bi bi-send me-2"></i>Envoi</h3>
+            <p class="text-muted mb-3">Délai de sécurité pendant lequel un message peut encore être annulé.</p>
+            <label class="form-label" for="sendDelay">Délai avant envoi</label><select class="form-select" id="sendDelay" name="send_delay" <?= $canManage?'':'disabled' ?>><?php foreach($allowedSendDelays as $seconds):?><option value="<?=$seconds?>" <?= (int)$settings['send_delay']===$seconds?'selected':'' ?>><?=$seconds?> seconde<?=$seconds>1?'s':''?></option><?php endforeach;?></select><div class="form-text">La boîte d’envoi s’actualise automatiquement une seconde après ce délai.</div>
+        </div>
+        <div class="p-4 border-bottom">
+            <h3 class="h6 mb-1"><i class="bi bi-reply me-2"></i>Réponses</h3>
+            <p class="text-muted mb-3">Comportement du rédacteur lors d’une réponse à un message.</p>
             <div class="form-check form-switch mb-4">
                 <input class="form-check-input" type="checkbox" role="switch" id="quoteReply" name="quote_reply" value="1" <?= !empty($settings['quote_reply'])?'checked':'' ?> <?= $canManage?'':'disabled' ?>>
                 <label class="form-check-label" for="quoteReply">Citer le message d’origine lors d’une réponse</label>

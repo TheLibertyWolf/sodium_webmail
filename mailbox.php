@@ -25,6 +25,7 @@ foreach ($folders as $folder) {
         break;
     }
 }
+$isSentFolder = sodium_folder_icon($folderKey) === 'send';
 $messages = [];
 $loadError = '';
 try {
@@ -81,10 +82,14 @@ sodium_render_header($folderLabel);
             </div>
         </div>
         <div class="message-list">
-        <?php foreach ($messages as $message): $selection=base64_encode(json_encode(['account'=>(int)$account['id'],'folder'=>$folderKey,'uid'=>(int)$message['uid'],'key'=>$message['message_key']])); ?>
+        <?php foreach ($messages as $message):
+            $selection=base64_encode(json_encode(['account'=>(int)$account['id'],'folder'=>$folderKey,'uid'=>(int)$message['uid'],'key'=>$message['message_key']]));
+            $toAddresses=$message['to_addresses']??[];$ccAddresses=$message['cc_addresses']??[];$bccAddresses=$message['bcc_addresses']??[];$primaryRecipient=$toAddresses[0]??['name'=>'','email'=>'Destinataire inconnu'];$otherRecipientCount=count($ccAddresses)+count($bccAddresses);$recipientTooltip='';
+            if($isSentFolder){foreach([['À','danger',$toAddresses],['Cc','primary',$ccAddresses],['Cci','warning',$bccAddresses]] as [$recipientType,$recipientColor,$recipientAddresses])foreach($recipientAddresses as $recipientAddress){$recipientText=trim((string)($recipientAddress['name']??''));if($recipientText!=='')$recipientText.=' · ';$recipientText.=(string)($recipientAddress['email']??'');$recipientTooltip.='<div class="recipient-tooltip-line"><span class="badge text-bg-'.$recipientColor.'">'.$recipientType.'</span><span>'.e($recipientText).'</span></div>';}}
+        ?>
             <div class="message-row <?= $message['unread'] ? 'unread' : '' ?>" data-message-row data-account="<?= (int)$account['id'] ?>" data-folder="<?= e($folderKey) ?>" data-uid="<?= (int)$message['uid'] ?>">
                 <span class="message-select-tools"><input class="form-check-input message-checkbox" type="checkbox" name="messages[]" value="<?= e($selection) ?>"><button class="message-star <?= $message['flagged']?'is-flagged':'' ?>" type="button" data-star-toggle title="<?= $message['flagged']?'Retirer des messages marqués':'Ajouter aux messages marqués' ?>"><i class="bi bi-star<?= $message['flagged']?'-fill':'' ?>"></i></button></span>
-                <span class="message-sender"><?= e($message['from']) ?></span>
+                <?php if($isSentFolder): ?><span class="message-sender message-recipient-summary" data-bs-toggle="tooltip" data-bs-html="true" data-bs-custom-class="recipient-list-tooltip" data-bs-title="<?= e($recipientTooltip?:'<span class=&quot;text-body-secondary&quot;>Aucun destinataire disponible</span>') ?>"><span class="badge text-bg-danger recipient-type-badge">À</span><span class="message-recipient-identity"><?php if(trim((string)$primaryRecipient['name'])!==''): ?><span class="message-recipient-name"><?= e($primaryRecipient['name']) ?></span><span class="message-recipient-email"><?= e($primaryRecipient['email']) ?></span><?php else: ?><span class="message-recipient-name"><?= e($primaryRecipient['email']) ?></span><?php endif; ?></span><?php if($otherRecipientCount): ?><span class="badge rounded-pill text-bg-secondary recipient-extra-count">+<?= $otherRecipientCount ?></span><?php endif; ?></span><?php else: ?><span class="message-sender"><?= e($message['from']) ?></span><?php endif; ?>
                 <span class="message-subject"><button class="read-dot <?= $message['unread']?'is-unread':'' ?>" type="button" title="<?= $message['unread']?'Marquer comme lu':'Marquer comme non lu' ?>" data-read-toggle></button><?php if($message['has_attachment']): ?><i class="bi bi-paperclip message-attachment-icon" title="Ce message contient une pièce jointe"></i><?php endif; ?><button class="message-open" type="button" data-open-message><?= e($message['subject']) ?></button><?php foreach($message['metadata']['tags']??[] as $tag): ?><span class="mail-tag" style="--tag-color:<?= e($tag['color']) ?>"><?= e($tag['name']) ?></span><?php endforeach; ?><?php if(!empty($message['metadata']['replies'])):$names=array_unique(array_column($message['metadata']['replies'],'name')); ?><i class="bi bi-reply-fill replied-icon" title="Répondu par <?= e(implode(', ',$names)) ?>"></i><?php endif; ?></span>
                 <time class="message-date human-date" tabindex="0" data-timestamp="<?= (int)$message['timestamp'] ?>" data-human="<?= e(sodium_human_date($message['timestamp'])) ?>" data-exact="<?= e($message['date']) ?>"><?= e(sodium_human_date($message['timestamp'])) ?></time>
             </div>

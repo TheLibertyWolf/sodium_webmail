@@ -469,7 +469,7 @@ function sodium_verify_license_key(string $licenseKey): array
     if(!preg_match('/^[a-f0-9]{128}$/',strtolower($licenseKey)))return ['status'=>'invalid','message'=>'Format de clé invalide.'];
     if(!function_exists('curl_init'))return ['status'=>'invalid','message'=>'Service de vérification indisponible.'];
     $curl=curl_init('https://licence.jessysystem.com/');
-    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.3'])]);
+    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.4'])]);
     $body=curl_exec($curl);$code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$error=curl_error($curl);curl_close($curl);
     if($body===false||$code!==200)return ['status'=>'invalid','message'=>$error!==''?'Serveur de licences inaccessible.':'Réponse invalide du serveur de licences.'];
     $result=json_decode((string)$body,true);
@@ -786,6 +786,28 @@ function sodium_message_subject(string $value): string
     return $subject !== '' ? $subject : '(pas d’objet)';
 }
 
+function sodium_parse_email_addresses(string $header): array
+{
+    $addresses = [];
+    foreach (imap_rfc822_parse_adrlist($header, '') ?: [] as $address) {
+        $mailbox = (string)($address->mailbox ?? '');
+        $host = (string)($address->host ?? '');
+        $email = strtolower($mailbox . '@' . $host);
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
+        $addresses[$email] = [
+            'email' => $email,
+            'name' => trim(sodium_decode_mime_header((string)($address->personal ?? ''))),
+        ];
+    }
+    return array_values($addresses);
+}
+
+function sodium_raw_header_value(string $headers, string $name): string
+{
+    if ($headers === '' || !preg_match('/^'.preg_quote($name, '/').':\s*(.+(?:\r?\n[ \t].+)*)/mi', $headers, $match)) return '';
+    return trim((string)preg_replace('/\r?\n[ \t]+/', ' ', $match[1]));
+}
+
 function sodium_imap_search_criteria(string $query): string
 {
     $query = mb_substr(trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $query) ?? ''), 0, 120);
@@ -809,6 +831,7 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
 {
     global $pdo;
     $stream = sodium_imap_open_account($account, $folder);
+    $isSentFolder = sodium_folder_icon($folder) === 'send';
     try {
         if (str_starts_with($searchCriteria, 'X-SODIUM-SEARCH:')) {
             $query=(string)base64_decode(substr($searchCriteria,16),true);
@@ -839,6 +862,15 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
         $messages = [];
         foreach ($overview as $item) {
             $from = sodium_decode_mime_header((string) ($item->from ?? 'Expéditeur inconnu'));
+            $toRaw = (string)($item->to ?? '');
+            $ccRaw = (string)($item->cc ?? '');
+            $bccRaw = (string)($item->bcc ?? '');
+            if ($isSentFolder && ($toRaw === '' || $bccRaw === '')) {
+                $rawHeaders = (string)(@imap_fetchheader($stream, (int)($item->uid ?? 0), FT_UID) ?: '');
+                if ($toRaw === '') $toRaw = sodium_raw_header_value($rawHeaders, 'To');
+                if ($ccRaw === '') $ccRaw = sodium_raw_header_value($rawHeaders, 'Cc');
+                if ($bccRaw === '') $bccRaw = sodium_raw_header_value($rawHeaders, 'Bcc');
+            }
             $subject = sodium_message_subject((string) ($item->subject ?? ''));
             $messageId = trim((string) ($item->message_id ?? ''));
             $messageKey = hash('sha256', $messageId !== '' ? strtolower($messageId) : ((int)$account['id'] . '|' . $folder . '|' . (int)($item->uid ?? 0)));
@@ -848,8 +880,12 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
                 'message_key' => $messageKey,
                 'from' => $from,
                 'from_raw' => (string) ($item->from ?? ''),
-                'to_raw' => (string) ($item->to ?? ''),
-                'cc_raw' => (string) ($item->cc ?? ''),
+                'to_raw' => $toRaw,
+                'cc_raw' => $ccRaw,
+                'bcc_raw' => $bccRaw,
+                'to_addresses' => sodium_parse_email_addresses($toRaw),
+                'cc_addresses' => sodium_parse_email_addresses($ccRaw),
+                'bcc_addresses' => sodium_parse_email_addresses($bccRaw),
                 'subject' => $subject,
                 'date' => !empty($item->date) ? date('d/m/Y H:i', strtotime((string) $item->date)) : '',
                 'timestamp' => !empty($item->date) ? (int) strtotime((string) $item->date) : 0,
@@ -859,7 +895,7 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
             ];
             $messages[] = $message;
             if (!in_array(sodium_folder_icon($folder), ['exclamation-octagon', 'trash'], true)) {
-                sodium_index_message_contacts((int) $account['id'], [$message['from_raw'], $message['to_raw'], $message['cc_raw']]);
+                sodium_index_message_contacts((int) $account['id'], [$message['from_raw'], $message['to_raw'], $message['cc_raw'], $message['bcc_raw']]);
             }
         }
         if ($messages) {
@@ -1198,27 +1234,13 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
         if ($result['html'] === '' && $result['plain'] === '' && $structure) {
             $result['plain'] = sodium_message_part_data($stream, $uid, '', (int)($structure->encoding ?? 0));
         }
-        $parseAddresses = static function (string $header): array {
-            $result = [];
-            foreach (imap_rfc822_parse_adrlist($header, '') ?: [] as $address) {
-                $mailbox = (string)($address->mailbox ?? '');
-                $host = (string)($address->host ?? '');
-                $email = strtolower($mailbox . '@' . $host);
-                if (!filter_var($email, FILTER_VALIDATE_EMAIL)) continue;
-                $result[$email] = [
-                    'email' => $email,
-                    'name' => sodium_decode_mime_header((string)($address->personal ?? '')),
-                ];
-            }
-            return array_values($result);
-        };
         $fromRaw = (string)($overview->from ?? '');
-        $fromAddresses = $parseAddresses($fromRaw);
+        $fromAddresses = sodium_parse_email_addresses($fromRaw);
         $senderEmail = (string)($fromAddresses[0]['email'] ?? '');
         $rawHeaders = (string)(@imap_fetchheader($stream, $uid, FT_UID) ?: '');
         $parsedHeaders = $rawHeaders !== '' ? @imap_rfc822_parse_headers($rawHeaders) : false;
         $replyToRaw = is_object($parsedHeaders) ? (string)($parsedHeaders->reply_toaddress ?? '') : '';
-        $replyToAddresses = $replyToRaw !== '' ? $parseAddresses($replyToRaw) : [];
+        $replyToAddresses = $replyToRaw !== '' ? sodium_parse_email_addresses($replyToRaw) : [];
         $replyEmail = (string)($replyToAddresses[0]['email'] ?? $senderEmail);
         $replyLabel = $replyToRaw !== '' ? sodium_decode_mime_header($replyToRaw) : sodium_decode_mime_header($fromRaw);
         $messageId = trim((string)($overview->message_id ?? ''));
@@ -1235,8 +1257,8 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
             'reply_to_addresses'=>$replyToAddresses,
             'to'=>sodium_decode_mime_header($toRaw),
             'cc'=>sodium_decode_mime_header($ccRaw),
-            'to_addresses'=>$parseAddresses($toRaw),
-            'cc_addresses'=>$parseAddresses($ccRaw),
+            'to_addresses'=>sodium_parse_email_addresses($toRaw),
+            'cc_addresses'=>sodium_parse_email_addresses($ccRaw),
             'subject'=>sodium_message_subject((string)($overview->subject ?? '')),
             'date'=>!empty($overview->date) ? date('d/m/Y H:i', strtotime((string)$overview->date)) : '',
             'html'=>$result['html'] !== '' ? sodium_sanitize_email_html($result['html'], true) : nl2br(e($result['plain'])),
