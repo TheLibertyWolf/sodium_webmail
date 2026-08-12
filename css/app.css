@@ -866,12 +866,14 @@ body {
     min-width: 0;
     display: flex;
     align-items: center;
-    gap: .4rem;
+    gap: .55rem;
 }
 
 .recipient-type-badge {
     flex: 0 0 auto;
-    font-size: .68rem;
+    padding: .16rem .3rem;
+    font-size: .58rem;
+    line-height: 1;
 }
 
 .message-recipient-identity {
@@ -904,16 +906,18 @@ body {
 }
 
 .recipient-list-tooltip .tooltip-inner {
-    max-width: min(420px, calc(100vw - 2rem));
+    width: max-content;
+    max-width: min(560px, calc(100vw - 2rem));
     padding: .6rem .7rem;
     text-align: left;
 }
 
 .recipient-tooltip-line {
     display: grid;
-    grid-template-columns: 2.3rem minmax(0, 1fr);
+    grid-template-columns: 2rem max-content;
     align-items: start;
     gap: .45rem;
+    white-space: nowrap;
 }
 
 .recipient-tooltip-line + .recipient-tooltip-line {
@@ -921,7 +925,9 @@ body {
 }
 
 .recipient-tooltip-line .badge {
-    width: 2.3rem;
+    width: 2rem;
+    padding: .18rem .25rem;
+    font-size: .6rem;
 }
 
 .message-subject {
