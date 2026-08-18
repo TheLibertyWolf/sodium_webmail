@@ -828,7 +828,7 @@ function sodium_structure_has_attachment($part): bool
     return false;
 }
 
-function sodium_fetch_messages(array $account, string $folder, int $limit = 80, int $offset = 0, ?int &$total = null, string $searchCriteria = 'ALL', string $statusFilter = 'all'): array
+function sodium_fetch_messages(array $account, string $folder, int $limit = 80, int $offset = 0, ?int &$total = null, string $searchCriteria = 'ALL', string $statusFilter = 'all', bool $resolveAttachments = true): array
 {
     global $pdo;
     $stream = sodium_imap_open_account($account, $folder);
@@ -923,6 +923,7 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
                     $message['has_attachment'] = $attachmentCache[$message['message_key']];
                     continue;
                 }
+                if (!$resolveAttachments) continue;
                 $structure = @imap_fetchstructure($stream, (int)$message['uid'], FT_UID);
                 $message['has_attachment'] = $structure ? sodium_structure_has_attachment($structure) : false;
                 $saveCache->execute([(int)$account['id'], $message['message_key'], $message['has_attachment'] ? 1 : 0]);

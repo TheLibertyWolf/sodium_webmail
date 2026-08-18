@@ -7,7 +7,7 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 ### Améliorations
 
 - ajout d’un périmètre de recherche sélectionnable : expéditeur/destinataire, objet, corps du message ou partout, avec recherche IMAP dans le contenu des messages ;
-- ajout d’une recherche approfondie à la demande, étendue aux anciens messages, aux dossiers personnalisés et à la recherche IMAP `TEXT` ;
+- ajout d’une recherche approfondie progressive à la demande : exploration d’un dossier par clic sans rechargement, ajout dynamique des résultats et recherche IMAP `TEXT` ;
 - affichage des destinataires dans les dossiers individuels « Envoyés » : destinataire principal précédé du label « À », compteur compact des `Cc`/`Cci` et infobulle détaillée colorée ;
 - regroupement des réglages de réception, d’envoi et de réponses dans une card unique avec un bouton d’enregistrement commun ;
 - alignement corrigé de l’option « Partager avec les utilisateurs du compte » dans les fenêtres d’ajout et de modification des modèles de réponse ;

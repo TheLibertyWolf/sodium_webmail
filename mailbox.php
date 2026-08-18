@@ -61,7 +61,6 @@ sodium_render_header($folderLabel);
             <button class="btn btn-outline-secondary" type="submit" title="Rechercher"><i class="bi bi-search"></i></button>
         </form>
         <?php $baseFolderUrl='/mailbox.php?account_id='.(int)$account['id'].'&folder='.rawurlencode($folderKey).'&limit='.$messageLimit.'&scope='.rawurlencode($searchScope).($searchQuery!==''?'&q='.rawurlencode($searchQuery):'').($deepSearch?'&deep=1':''); ?>
-        <?php if($searchQuery!==''&&!$deepSearch): ?><a class="btn btn-outline-info" href="<?= e($baseFolderUrl.'&status='.rawurlencode($statusFilter).'&tag_id='.$tagFilter.'&deep=1') ?>"><i class="bi bi-search-heart"></i> Plus de résultats</a><?php elseif($deepSearch): ?><span class="badge text-bg-info search-depth-badge"><i class="bi bi-search-heart"></i> Recherche approfondie</span><?php endif; ?>
         <div class="btn-group btn-group-sm mail-status-filter">
             <a class="btn btn-outline-secondary <?= $statusFilter === 'all' ? 'active' : '' ?>" href="<?= e($baseFolderUrl) ?>">Tous</a>
             <a class="btn btn-outline-secondary <?= $statusFilter === 'unread' ? 'active' : '' ?>" href="<?= e($baseFolderUrl.'&status=unread') ?>">Non lus</a>
@@ -71,7 +70,7 @@ sodium_render_header($folderLabel);
         <label class="d-flex align-items-center gap-2 ms-auto small text-muted">Afficher <select class="form-select form-select-sm w-auto" onchange="location.href=this.value"><?php foreach([15,25,50,100] as $limitOption): ?><option value="<?= e('/mailbox.php?account_id='.(int)$account['id'].'&folder='.rawurlencode($folderKey).'&status='.$statusFilter.'&tag_id='.$tagFilter.'&limit='.$limitOption.'&scope='.rawurlencode($searchScope).($searchQuery!==''?'&q='.rawurlencode($searchQuery):'').($deepSearch?'&deep=1':'')) ?>" <?= $messageLimit===$limitOption?'selected':'' ?>><?= $limitOption ?></option><?php endforeach; ?></select></label>
     </div>
     <?php if ($loadError): ?><div class="mail-empty-content"><i class="bi bi-exclamation-triangle"></i><h2>Connexion IMAP impossible</h2><p><?= e($loadError) ?></p></div>
-    <?php elseif (!$messages): ?><div class="mail-empty-content"><i class="bi bi-envelope-open"></i><h2><?= e($folderLabel) ?></h2><p>Ce dossier ne contient aucun message.</p></div>
+    <?php elseif (!$messages): ?><div class="mail-empty-content"><i class="bi bi-envelope-open"></i><h2><?= e($folderLabel) ?></h2><p>Ce dossier ne contient aucun message.</p><?php if($searchQuery!==''&&!$deepSearch): ?><a class="btn btn-sm btn-link text-secondary text-decoration-none" href="<?= e($baseFolderUrl.'&status='.rawurlencode($statusFilter).'&tag_id='.$tagFilter.'&deep=1') ?>"><i class="bi bi-chevron-down"></i> Plus de résultats</a><?php endif; ?></div>
     <?php else: ?><form method="post" action="/bulk-action.php" class="bulk-mail-form">
         <input type="hidden" name="return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? '/mailbox.php') ?>">
         <div class="bulk-actions">
@@ -101,6 +100,7 @@ sodium_render_header($folderLabel);
         <?php endforeach; ?>
         </div>
         <?php $pageCount=max(1,(int)ceil($messageTotal/$messageLimit)); if($pageCount>1): ?><nav class="d-flex justify-content-between align-items-center p-3 border-top" aria-label="Pagination des messages"><span class="small text-muted"><?= min($messageOffset+1,$messageTotal) ?>–<?= min($messageOffset+$messageLimit,$messageTotal) ?> sur <?= $messageTotal ?></span><div class="btn-group btn-group-sm"><?php $pageBase=$baseFolderUrl.'&status='.$statusFilter.'&tag_id='.$tagFilter; ?><a class="btn btn-outline-secondary <?= $page<=1?'disabled':'' ?>" href="<?= e($pageBase.'&page='.max(1,$page-1)) ?>">Précédent</a><span class="btn btn-outline-secondary disabled"><?= $page ?> / <?= $pageCount ?></span><a class="btn btn-outline-secondary <?= $page>=$pageCount?'disabled':'' ?>" href="<?= e($pageBase.'&page='.min($pageCount,$page+1)) ?>">Suivant</a></div></nav><?php endif; ?>
+        <?php if($searchQuery!==''&&!$deepSearch): ?><div class="deep-search-control"><a class="btn btn-sm btn-link text-secondary text-decoration-none" href="<?= e($baseFolderUrl.'&status='.rawurlencode($statusFilter).'&tag_id='.$tagFilter.'&deep=1') ?>"><i class="bi bi-chevron-down"></i> Plus de résultats</a></div><?php elseif($deepSearch): ?><div class="deep-search-control"><span class="small text-muted"><i class="bi bi-search-heart"></i> Recherche approfondie terminée pour ce dossier</span></div><?php endif; ?>
     </form><?php endif; ?>
 </div>
 <?php sodium_render_footer(); ?>

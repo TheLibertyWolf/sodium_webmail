@@ -65,7 +65,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
         <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-        <link href="/css/app.css?v=20260818-02" rel="stylesheet">
+        <link href="/css/app.css?v=20260818-03" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
         <meta name="mobile-web-app-capable" content="yes">
@@ -682,7 +682,6 @@ function sodium_render_footer(): void
                     });
                 });
 
-                const humanDateElements = Array.from(document.querySelectorAll('.human-date'));
                 const formatHumanDate = timestamp => {
                     if (!timestamp) return '';
                     const now = Math.floor(Date.now() / 1000);
@@ -700,13 +699,15 @@ function sodium_render_footer(): void
                     if (difference < 604800) return `il y a ${Math.floor(difference / 86400)} jours`;
                     return new Date(timestamp * 1000).toLocaleDateString('fr-FR');
                 };
-                const refreshHumanDates = () => humanDateElements.forEach(date => {
+                const refreshHumanDates = () => document.querySelectorAll('.human-date').forEach(date => {
                     const timestamp = Number(date.dataset.timestamp || 0);
                     if (!timestamp) return;
                     date.dataset.human = formatHumanDate(timestamp);
                     if (date.dataset.dateMode !== 'exact') date.textContent = date.dataset.human;
                 });
-                humanDateElements.forEach(date => {
+                const bindHumanDate = date => {
+                    if(date.dataset.humanDateBound==='1')return;
+                    date.dataset.humanDateBound='1';
                     const toggle = () => {
                         const showHuman = date.dataset.dateMode === 'exact';
                         date.dataset.dateMode = showHuman ? 'human' : 'exact';
@@ -714,15 +715,16 @@ function sodium_render_footer(): void
                     };
                     date.addEventListener('click', event => { event.stopPropagation(); toggle(); });
                     date.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); toggle(); } });
-                });
+                };
+                document.querySelectorAll('.human-date').forEach(bindHumanDate);
                 refreshHumanDates();
-                if (humanDateElements.length) window.setInterval(refreshHumanDates, 30000);
+                if (document.querySelector('.human-date')) window.setInterval(refreshHumanDates, 30000);
 
                 document.querySelectorAll('.bulk-mail-form').forEach(form => {
                     const master = form.querySelector('.select-all-messages');
-                    const checks = Array.from(form.querySelectorAll('.message-checkbox'));
                     const actions = form.querySelector('.bulk-buttons');
                     const sync = () => {
+                        const checks = Array.from(form.querySelectorAll('.message-checkbox'));
                         const selected = checks.filter(check => check.checked).length;
                         actions?.classList.toggle('visible', selected > 0);
                         if (master) {
@@ -730,8 +732,8 @@ function sodium_render_footer(): void
                             master.indeterminate = selected > 0 && selected < checks.length;
                         }
                     };
-                    master?.addEventListener('change', () => { checks.forEach(check => check.checked = master.checked); sync(); });
-                    checks.forEach(check => check.addEventListener('change', sync));
+                    master?.addEventListener('change', () => { form.querySelectorAll('.message-checkbox').forEach(check => check.checked = master.checked); sync(); });
+                    form.addEventListener('change',event=>{if(event.target.matches('.message-checkbox'))sync();});
                     sync();
                 });
 
@@ -923,7 +925,9 @@ function sodium_render_footer(): void
                     }
                 };
                 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => bootstrap.Tooltip.getOrCreateInstance(element));
-                document.querySelectorAll('[data-message-row]').forEach(row => {
+                const bindMessageRow = row => {
+                    if(row.dataset.messageBound==='1')return;
+                    row.dataset.messageBound='1';
                     row.querySelector('[data-open-message]')?.addEventListener('click', event => { event.stopPropagation(); openMessage(row); });
                     row.addEventListener('click', event => {
                         if (event.target.closest('input,button,a,select,time')) return;
@@ -957,7 +961,38 @@ function sodium_render_footer(): void
                             button.title = markFlagged ? 'Retirer des messages marqués' : 'Ajouter aux messages marqués';
                         } else showClientToast('Modification de l’étoile impossible.', 'danger');
                     });
-                });
+                };
+                document.querySelectorAll('[data-message-row]').forEach(bindMessageRow);
+                document.querySelectorAll('[data-deep-search]').forEach(button=>button.addEventListener('click',async()=>{
+                    const status=button.parentElement?.querySelector('[data-deep-search-status]');
+                    const list=button.closest('.bulk-mail-form')?.querySelector('.message-list');
+                    if(!list||button.disabled)return;
+                    button.disabled=true;
+                    const original=button.innerHTML;
+                    button.innerHTML='<span class="spinner-border spinner-border-sm me-1"></span> Recherche en cours…';
+                    if(status){status.classList.remove('d-none');status.textContent='Exploration du dossier suivant…';}
+                    try{
+                        const params=new URLSearchParams({q:button.dataset.query||'',scope:button.dataset.scope||'all',status:button.dataset.status||'all',cursor:button.dataset.cursor||'0'});
+                        const response=await fetch('/api/deep-search.php?'+params.toString(),{headers:{Accept:'application/json'}});
+                        const result=await response.json();
+                        if(!response.ok)throw new Error(result.error||'Recherche approfondie impossible.');
+                        button.dataset.cursor=String(result.next_cursor||0);
+                        let added=0;
+                        if(result.html){
+                            const template=document.createElement('template');template.innerHTML=result.html;
+                            template.content.querySelectorAll('[data-message-row]').forEach(row=>{
+                                const duplicate=[...list.querySelectorAll('[data-message-row]')].some(existing=>existing.dataset.account===row.dataset.account&&existing.dataset.folder===row.dataset.folder&&existing.dataset.uid===row.dataset.uid);
+                                if(duplicate)return;
+                                bindMessageRow(row);row.querySelectorAll('.human-date').forEach(bindHumanDate);list.querySelector('[data-search-empty]')?.remove();list.appendChild(row);added++;
+                            });
+                            refreshHumanDates();
+                        }
+                        if(status)status.textContent=added?`${added} résultat${added>1?'s':''} ajouté${added>1?'s':''} depuis ${result.folder}.`:`Aucun autre résultat dans ${result.folder} (${result.progress}/${result.total}).`;
+                        if(result.done){button.classList.add('d-none');if(status)status.textContent='Tous les dossiers ont été parcourus.';}
+                        else button.innerHTML='<i class="bi bi-chevron-down"></i> '+(added?'Plus de résultats':'Continuer la recherche');
+                    }catch(error){button.innerHTML=original;showClientToast(error.message||'Recherche approfondie impossible.','danger');if(status)status.classList.add('d-none');}
+                    finally{if(!button.classList.contains('d-none'))button.disabled=false;}
+                }));
                 readerElement?.addEventListener('hidden.bs.modal', () => {
                     closeAttachmentPreview();
                     const replies=document.getElementById('readerReplies');

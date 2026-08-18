@@ -10,8 +10,7 @@ $tagFilter = (int)($_GET['tag_id'] ?? 0);
 $searchQuery = mb_substr(trim((string)($_GET['q'] ?? '')), 0, 120);
 $allowedSearchScopes = ['correspondents','subject','body','all'];
 $searchScope = in_array((string)($_GET['scope'] ?? 'all'), $allowedSearchScopes, true) ? (string)($_GET['scope'] ?? 'all') : 'all';
-$deepSearch = $searchQuery !== '' && !empty($_GET['deep']);
-$searchCriteria = sodium_imap_search_criteria($searchQuery, $searchScope, $deepSearch);
+$searchCriteria = sodium_imap_search_criteria($searchQuery, $searchScope);
 $requestedLimit = (int)($_GET['limit'] ?? 25);
 $messageLimit = in_array($requestedLimit, [15,25,50,100], true) ? $requestedLimit : 25;
 $page = max(1, (int)($_GET['page'] ?? 1));
@@ -19,20 +18,16 @@ $messages = [];
 $loadErrors = [];
 foreach ($accounts as $account) {
     if (empty($account['password_cipher'])) continue;
-    $searchFolders=$deepSearch?sodium_account_folders($account):[['key'=>'INBOX','label'=>'Boîte de réception']];
-    foreach($searchFolders as $searchFolder){
-        $folderKey=(string)($searchFolder['key']??'INBOX');
-        try {
-            $accountMessageTotal=0;
-            foreach (sodium_fetch_messages($account, $folderKey, 100, 0, $accountMessageTotal, $searchCriteria, $statusFilter) as $message) {
-                $message['account'] = $account;
-                $message['folder'] = $folderKey;
-                $message['folder_label'] = (string)($searchFolder['label']??sodium_folder_display_label($folderKey));
-                $messages[] = $message;
-            }
-        } catch (Throwable $exception) {
-            $loadErrors[] = ($account['display_name'] ?: $account['email_address']) . ($deepSearch?' · '.(string)($searchFolder['label']??$folderKey):'') . ' : ' . $exception->getMessage();
+    try {
+        $accountMessageTotal=0;
+        foreach (sodium_fetch_messages($account, 'INBOX', 100, 0, $accountMessageTotal, $searchCriteria, $statusFilter) as $message) {
+            $message['account'] = $account;
+            $message['folder'] = 'INBOX';
+            $message['folder_label'] = 'Boîte de réception';
+            $messages[] = $message;
         }
+    } catch (Throwable $exception) {
+        $loadErrors[] = ($account['display_name'] ?: $account['email_address']) . ' : ' . $exception->getMessage();
     }
 }
 usort($messages, static fn(array $a, array $b): int => $b['timestamp'] <=> $a['timestamp']);
@@ -45,10 +40,10 @@ $pageCount=max(1,(int)ceil($messageTotal/$messageLimit));
 if($page>$pageCount)$page=$pageCount;
 $messageOffset=($page-1)*$messageLimit;
 $messages=array_slice($messages,$messageOffset,$messageLimit);
-$unifiedUrl=static function(array $overrides=[])use($statusFilter,$tagFilter,$messageLimit,$searchQuery,$searchScope,$deepSearch):string{
-    $params=['status'=>$statusFilter,'tag_id'=>$tagFilter,'limit'=>$messageLimit,'q'=>$searchQuery,'scope'=>$searchScope,'deep'=>$deepSearch?1:0];
+$unifiedUrl=static function(array $overrides=[])use($statusFilter,$tagFilter,$messageLimit,$searchQuery,$searchScope):string{
+    $params=['status'=>$statusFilter,'tag_id'=>$tagFilter,'limit'=>$messageLimit,'q'=>$searchQuery,'scope'=>$searchScope];
     foreach($overrides as $key=>$value)$params[$key]=$value;
-    $params=array_filter($params,static fn($value,$key)=>!($key==='status'&&$value==='all')&&!($key==='tag_id'&&(int)$value===0)&&!($key==='page'&&(int)$value<=1)&&!($key==='deep'&&(int)$value===0),ARRAY_FILTER_USE_BOTH);
+    $params=array_filter($params,static fn($value,$key)=>!($key==='status'&&$value==='all')&&!($key==='tag_id'&&(int)$value===0)&&!($key==='page'&&(int)$value<=1),ARRAY_FILTER_USE_BOTH);
     return '/index.php'.($params?'?'.http_build_query($params):'');
 };
 $availableTags=[];
@@ -68,7 +63,6 @@ sodium_render_header('Boîte de réception unifiée');
             <select class="form-select mail-search-scope" name="scope" aria-label="Périmètre de recherche"><option value="correspondents" <?= $searchScope==='correspondents'?'selected':'' ?>>Expéditeur/destinataire</option><option value="subject" <?= $searchScope==='subject'?'selected':'' ?>>Objet</option><option value="body" <?= $searchScope==='body'?'selected':'' ?>>Corps du message</option><option value="all" <?= $searchScope==='all'?'selected':'' ?>>Partout</option></select>
             <button class="btn btn-outline-secondary" type="submit" title="Rechercher"><i class="bi bi-search"></i></button>
         </form>
-        <?php if($searchQuery!==''&&!$deepSearch): ?><a class="btn btn-outline-info" href="<?= e($unifiedUrl(['deep'=>1,'page'=>1])) ?>"><i class="bi bi-search-heart"></i> Plus de résultats</a><?php elseif($deepSearch): ?><span class="badge text-bg-info search-depth-badge"><i class="bi bi-search-heart"></i> Recherche approfondie</span><?php endif; ?>
         <div class="btn-group btn-group-sm mail-status-filter">
             <a class="btn btn-outline-secondary <?= $statusFilter === 'all' ? 'active' : '' ?>" href="<?= e($unifiedUrl(['status'=>'all','page'=>1])) ?>">Tous</a>
             <a class="btn btn-outline-secondary <?= $statusFilter === 'unread' ? 'active' : '' ?>" href="<?= e($unifiedUrl(['status'=>'unread','page'=>1])) ?>">Non lus</a>
@@ -78,7 +72,7 @@ sodium_render_header('Boîte de réception unifiée');
         <label class="d-flex align-items-center gap-2 ms-auto small text-muted">Afficher <select class="form-select form-select-sm w-auto" onchange="location.href=this.value"><?php foreach([15,25,50,100] as $limitOption): ?><option value="<?= e($unifiedUrl(['limit'=>$limitOption,'page'=>1])) ?>" <?= $messageLimit===$limitOption?'selected':'' ?>><?= $limitOption ?></option><?php endforeach; ?></select></label>
     </div>
     <?php if ($loadErrors): ?><div class="alert alert-warning m-3"><?= e(implode(' · ', $loadErrors)) ?></div><?php endif; ?>
-    <?php if (!$messages): ?><div class="mail-empty-content"><i class="bi bi-inboxes"></i><h2>Boîte de réception unifiée</h2><p>Aucun message ne correspond au filtre sélectionné.</p></div>
+    <?php if (!$messages&&$searchQuery===''): ?><div class="mail-empty-content"><i class="bi bi-inboxes"></i><h2>Boîte de réception unifiée</h2><p>Aucun message ne correspond au filtre sélectionné.</p></div>
     <?php else: ?><form method="post" action="/bulk-action.php" class="bulk-mail-form">
         <input type="hidden" name="return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? '/index.php') ?>">
         <div class="bulk-actions">
@@ -94,17 +88,11 @@ sodium_render_header('Boîte de réception unifiée');
             </div>
         </div>
         <div class="message-list">
-        <?php foreach ($messages as $message): $account=$message['account']; $messageFolder=(string)($message['folder']??'INBOX'); $selection=base64_encode(json_encode(['account'=>(int)$account['id'],'folder'=>$messageFolder,'uid'=>(int)$message['uid'],'key'=>$message['message_key']])); ?>
-            <div class="message-row unified <?= $message['unread'] ? 'unread' : '' ?>" data-message-row data-account="<?= (int)$account['id'] ?>" data-folder="<?= e($messageFolder) ?>" data-uid="<?= (int)$message['uid'] ?>">
-                <span class="message-select-tools"><input class="form-check-input message-checkbox" type="checkbox" name="messages[]" value="<?= e($selection) ?>"><button class="message-star <?= $message['flagged']?'is-flagged':'' ?>" type="button" data-star-toggle title="<?= $message['flagged']?'Retirer des messages marqués':'Ajouter aux messages marqués' ?>"><i class="bi bi-star<?= $message['flagged']?'-fill':'' ?>"></i></button></span>
-                <span class="message-account-identity"><?php if (!empty($account['icon_path'])): ?><img class="mail-account-image" style="--account-color:<?= e($account['label_color']) ?>" src="<?= e($account['icon_path']) ?>" alt=""><?php else: ?><span class="mail-account-avatar" style="--account-color:<?= e($account['label_color']) ?>"><?= e(strtoupper(substr((string)$account['email_address'],0,1))) ?></span><?php endif; ?><?php if(!empty($account['label_text'])): ?><span class="mailbox-label" style="--label-color:<?= e($account['label_color']) ?>;--label-text-color:<?= e(sodium_color_contrast((string)$account['label_color'])) ?>"><?= e($account['label_text']) ?></span><?php endif; ?></span>
-                <span class="message-sender"><?= e($message['from']) ?></span>
-                <span class="message-subject"><button class="read-dot <?= $message['unread']?'is-unread':'' ?>" type="button" title="<?= $message['unread']?'Marquer comme lu':'Marquer comme non lu' ?>" data-read-toggle></button><?php if($message['has_attachment']): ?><i class="bi bi-paperclip message-attachment-icon" title="Ce message contient une pièce jointe"></i><?php endif; ?><button class="message-open" type="button" data-open-message><?= e($message['subject']) ?></button><?php if($deepSearch&&strcasecmp($messageFolder,'INBOX')!==0): ?><span class="badge text-bg-secondary deep-search-folder"><?= e((string)($message['folder_label']??sodium_folder_display_label($messageFolder))) ?></span><?php endif; ?><?php foreach($message['metadata']['tags']??[] as $tag): ?><span class="mail-tag" style="--tag-color:<?= e($tag['color']) ?>"><?= e($tag['name']) ?></span><?php endforeach; ?><?php if(!empty($message['metadata']['replies'])):$names=array_unique(array_column($message['metadata']['replies'],'name')); ?><i class="bi bi-reply-fill replied-icon" title="Répondu par <?= e(implode(', ',$names)) ?>"></i><?php endif; ?></span>
-                <time class="message-date human-date" tabindex="0" data-timestamp="<?= (int)$message['timestamp'] ?>" data-human="<?= e(sodium_human_date($message['timestamp'])) ?>" data-exact="<?= e($message['date']) ?>"><?= e(sodium_human_date($message['timestamp'])) ?></time>
-            </div>
-        <?php endforeach; ?>
+        <?php if(!$messages): ?><div class="mail-empty-content compact" data-search-empty><i class="bi bi-search"></i><p class="mb-0">Aucun résultat dans les boîtes de réception. Vous pouvez poursuivre dans les autres dossiers.</p></div><?php else: ?>
+        <?php $showSearchFolder=false; foreach ($messages as $message) require __DIR__.'/includes/unified-message-row.php'; endif; ?>
         </div>
         <?php if($pageCount>1): ?><nav class="d-flex justify-content-between align-items-center p-3 border-top" aria-label="Pagination des messages"><span class="small text-muted"><?= min($messageOffset+1,$messageTotal) ?>–<?= min($messageOffset+$messageLimit,$messageTotal) ?> sur <?= $messageTotal ?></span><div class="btn-group btn-group-sm"><a class="btn btn-outline-secondary <?= $page<=1?'disabled':'' ?>" href="<?= e($unifiedUrl(['page'=>max(1,$page-1)])) ?>">Précédent</a><span class="btn btn-outline-secondary disabled"><?= $page ?> / <?= $pageCount ?></span><a class="btn btn-outline-secondary <?= $page>=$pageCount?'disabled':'' ?>" href="<?= e($unifiedUrl(['page'=>min($pageCount,$page+1)])) ?>">Suivant</a></div></nav><?php endif; ?>
+        <?php if($searchQuery!==''): ?><div class="deep-search-control"><button class="btn btn-sm btn-link text-secondary text-decoration-none" type="button" data-deep-search data-query="<?= e($searchQuery) ?>" data-scope="<?= e($searchScope) ?>" data-status="<?= e($statusFilter) ?>" data-cursor="0"><i class="bi bi-chevron-down"></i> Plus de résultats</button><div class="small text-muted mt-1 d-none" data-deep-search-status></div></div><?php endif; ?>
     </form><?php endif; ?>
 </div>
 <?php sodium_render_footer(); ?>
