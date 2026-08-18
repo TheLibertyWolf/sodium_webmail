@@ -677,6 +677,21 @@ body {
     max-width: 190px;
 }
 
+.search-depth-badge {
+    align-items: center;
+    display: inline-flex;
+    font-size: .78rem;
+    gap: .35rem;
+    min-height: 38px;
+    padding-inline: .75rem;
+}
+
+.deep-search-folder {
+    flex: 0 0 auto;
+    font-size: .68rem;
+    font-weight: 500;
+}
+
 .mail-status-filter {
     flex: 0 0 auto;
 }

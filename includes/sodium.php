@@ -808,12 +808,12 @@ function sodium_raw_header_value(string $headers, string $name): string
     return trim((string)preg_replace('/\r?\n[ \t]+/', ' ', $match[1]));
 }
 
-function sodium_imap_search_criteria(string $query, string $scope = 'all'): string
+function sodium_imap_search_criteria(string $query, string $scope = 'all', bool $deep = false): string
 {
     $query = mb_substr(trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $query) ?? ''), 0, 120);
     if ($query === '') return 'ALL';
     if (!in_array($scope, ['correspondents', 'subject', 'body', 'all'], true)) $scope = 'all';
-    return 'X-SODIUM-SEARCH:' . base64_encode(json_encode(['query'=>$query, 'scope'=>$scope], JSON_UNESCAPED_UNICODE));
+    return 'X-SODIUM-SEARCH:' . base64_encode(json_encode(['query'=>$query, 'scope'=>$scope, 'deep'=>$deep], JSON_UNESCAPED_UNICODE));
 }
 
 function sodium_structure_has_attachment($part): bool
@@ -839,14 +839,15 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
             $payload=json_decode($decoded,true);
             $query=is_array($payload)?(string)($payload['query']??''):$decoded;
             $scope=is_array($payload)?(string)($payload['scope']??'all'):'all';
+            $deep=is_array($payload)&&!empty($payload['deep']);
             $quoted='"'.str_replace(['\\','"'],['\\\\','\\"'],$query).'"';
             $uids=[];
             $seenCriterion = $statusFilter === 'read' ? ' SEEN' : ($statusFilter === 'unread' ? ' UNSEEN' : '');
             $searchFields=match($scope){
                 'correspondents'=>['FROM','TO','CC','BCC'],
                 'subject'=>['SUBJECT'],
-                'body'=>['BODY'],
-                default=>['FROM','TO','CC','BCC','SUBJECT','BODY'],
+                'body'=>$deep?['BODY','TEXT']:['BODY'],
+                default=>$deep?['FROM','TO','CC','BCC','SUBJECT','BODY','TEXT']:['FROM','TO','CC','BCC','SUBJECT','BODY'],
             };
             foreach($searchFields as $field){
                 $criteria=$field.' '.$quoted.$seenCriterion;

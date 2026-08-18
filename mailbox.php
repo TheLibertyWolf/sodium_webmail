@@ -14,7 +14,8 @@ $tagFilter=(int)($_GET['tag_id']??0);
 $searchQuery=mb_substr(trim((string)($_GET['q']??'')),0,120);
 $allowedSearchScopes=['correspondents','subject','body','all'];
 $searchScope=in_array((string)($_GET['scope']??'all'),$allowedSearchScopes,true)?(string)($_GET['scope']??'all'):'all';
-$searchCriteria=sodium_imap_search_criteria($searchQuery,$searchScope);
+$deepSearch=$searchQuery!==''&&!empty($_GET['deep']);
+$searchCriteria=sodium_imap_search_criteria($searchQuery,$searchScope,$deepSearch);
 $messageLimit=in_array((int)($_GET['limit']??25),[15,25,50,100],true)?(int)($_GET['limit']??25):25;
 $page=max(1,(int)($_GET['page']??1));
 $messageOffset=($page-1)*$messageLimit;
@@ -59,14 +60,15 @@ sodium_render_header($folderLabel);
             <select class="form-select mail-search-scope" name="scope" aria-label="Périmètre de recherche"><option value="correspondents" <?= $searchScope==='correspondents'?'selected':'' ?>>Expéditeur/destinataire</option><option value="subject" <?= $searchScope==='subject'?'selected':'' ?>>Objet</option><option value="body" <?= $searchScope==='body'?'selected':'' ?>>Corps du message</option><option value="all" <?= $searchScope==='all'?'selected':'' ?>>Partout</option></select>
             <button class="btn btn-outline-secondary" type="submit" title="Rechercher"><i class="bi bi-search"></i></button>
         </form>
-        <?php $baseFolderUrl='/mailbox.php?account_id='.(int)$account['id'].'&folder='.rawurlencode($folderKey).'&limit='.$messageLimit.'&scope='.rawurlencode($searchScope).($searchQuery!==''?'&q='.rawurlencode($searchQuery):''); ?>
+        <?php $baseFolderUrl='/mailbox.php?account_id='.(int)$account['id'].'&folder='.rawurlencode($folderKey).'&limit='.$messageLimit.'&scope='.rawurlencode($searchScope).($searchQuery!==''?'&q='.rawurlencode($searchQuery):'').($deepSearch?'&deep=1':''); ?>
+        <?php if($searchQuery!==''&&!$deepSearch): ?><a class="btn btn-outline-info" href="<?= e($baseFolderUrl.'&status='.rawurlencode($statusFilter).'&tag_id='.$tagFilter.'&deep=1') ?>"><i class="bi bi-search-heart"></i> Plus de résultats</a><?php elseif($deepSearch): ?><span class="badge text-bg-info search-depth-badge"><i class="bi bi-search-heart"></i> Recherche approfondie</span><?php endif; ?>
         <div class="btn-group btn-group-sm mail-status-filter">
             <a class="btn btn-outline-secondary <?= $statusFilter === 'all' ? 'active' : '' ?>" href="<?= e($baseFolderUrl) ?>">Tous</a>
             <a class="btn btn-outline-secondary <?= $statusFilter === 'unread' ? 'active' : '' ?>" href="<?= e($baseFolderUrl.'&status=unread') ?>">Non lus</a>
             <a class="btn btn-outline-secondary <?= $statusFilter === 'read' ? 'active' : '' ?>" href="<?= e($baseFolderUrl.'&status=read') ?>">Lus</a>
         </div>
         <?php if($availableTags): ?><select class="form-select form-select-sm tag-filter" onchange="location.href=this.value"><option value="<?= e($baseFolderUrl.'&status='.$statusFilter) ?>">Tous les tags</option><?php foreach($availableTags as $tag): ?><option value="<?= e($baseFolderUrl.'&status='.$statusFilter.'&tag_id='.(int)$tag['id']) ?>" <?= $tagFilter===(int)$tag['id']?'selected':'' ?>><?= e($tag['name']) ?></option><?php endforeach; ?></select><?php endif; ?>
-        <label class="d-flex align-items-center gap-2 ms-auto small text-muted">Afficher <select class="form-select form-select-sm w-auto" onchange="location.href=this.value"><?php foreach([15,25,50,100] as $limitOption): ?><option value="<?= e('/mailbox.php?account_id='.(int)$account['id'].'&folder='.rawurlencode($folderKey).'&status='.$statusFilter.'&tag_id='.$tagFilter.'&limit='.$limitOption.'&scope='.rawurlencode($searchScope).($searchQuery!==''?'&q='.rawurlencode($searchQuery):'')) ?>" <?= $messageLimit===$limitOption?'selected':'' ?>><?= $limitOption ?></option><?php endforeach; ?></select></label>
+        <label class="d-flex align-items-center gap-2 ms-auto small text-muted">Afficher <select class="form-select form-select-sm w-auto" onchange="location.href=this.value"><?php foreach([15,25,50,100] as $limitOption): ?><option value="<?= e('/mailbox.php?account_id='.(int)$account['id'].'&folder='.rawurlencode($folderKey).'&status='.$statusFilter.'&tag_id='.$tagFilter.'&limit='.$limitOption.'&scope='.rawurlencode($searchScope).($searchQuery!==''?'&q='.rawurlencode($searchQuery):'').($deepSearch?'&deep=1':'')) ?>" <?= $messageLimit===$limitOption?'selected':'' ?>><?= $limitOption ?></option><?php endforeach; ?></select></label>
     </div>
     <?php if ($loadError): ?><div class="mail-empty-content"><i class="bi bi-exclamation-triangle"></i><h2>Connexion IMAP impossible</h2><p><?= e($loadError) ?></p></div>
     <?php elseif (!$messages): ?><div class="mail-empty-content"><i class="bi bi-envelope-open"></i><h2><?= e($folderLabel) ?></h2><p>Ce dossier ne contient aucun message.</p></div>
