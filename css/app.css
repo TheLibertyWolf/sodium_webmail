@@ -668,8 +668,13 @@ body {
 }
 
 .mail-search {
-    width: min(520px, 100%);
+    width: min(720px, 100%);
     margin-left: auto;
+}
+
+.mail-search-scope {
+    flex: 0 0 190px !important;
+    max-width: 190px;
 }
 
 .mail-status-filter {
@@ -2000,6 +2005,12 @@ html.sidebar-collapsed .sidebar .nav-link {
 
     .mail-search {
         margin-left: 0;
+    }
+
+    .mail-search-scope {
+        flex-basis: 155px !important;
+        max-width: 155px;
+        font-size: .78rem;
     }
 
     .twofa-setup-grid {

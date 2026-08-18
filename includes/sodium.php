@@ -808,11 +808,12 @@ function sodium_raw_header_value(string $headers, string $name): string
     return trim((string)preg_replace('/\r?\n[ \t]+/', ' ', $match[1]));
 }
 
-function sodium_imap_search_criteria(string $query): string
+function sodium_imap_search_criteria(string $query, string $scope = 'all'): string
 {
     $query = mb_substr(trim(preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $query) ?? ''), 0, 120);
     if ($query === '') return 'ALL';
-    return 'X-SODIUM-SEARCH:' . base64_encode($query);
+    if (!in_array($scope, ['correspondents', 'subject', 'body', 'all'], true)) $scope = 'all';
+    return 'X-SODIUM-SEARCH:' . base64_encode(json_encode(['query'=>$query, 'scope'=>$scope], JSON_UNESCAPED_UNICODE));
 }
 
 function sodium_structure_has_attachment($part): bool
@@ -834,11 +835,20 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
     $isSentFolder = sodium_folder_icon($folder) === 'send';
     try {
         if (str_starts_with($searchCriteria, 'X-SODIUM-SEARCH:')) {
-            $query=(string)base64_decode(substr($searchCriteria,16),true);
+            $decoded=(string)base64_decode(substr($searchCriteria,16),true);
+            $payload=json_decode($decoded,true);
+            $query=is_array($payload)?(string)($payload['query']??''):$decoded;
+            $scope=is_array($payload)?(string)($payload['scope']??'all'):'all';
             $quoted='"'.str_replace(['\\','"'],['\\\\','\\"'],$query).'"';
             $uids=[];
             $seenCriterion = $statusFilter === 'read' ? ' SEEN' : ($statusFilter === 'unread' ? ' UNSEEN' : '');
-            foreach(['FROM','TO','CC','SUBJECT'] as $field){
+            $searchFields=match($scope){
+                'correspondents'=>['FROM','TO','CC','BCC'],
+                'subject'=>['SUBJECT'],
+                'body'=>['BODY'],
+                default=>['FROM','TO','CC','BCC','SUBJECT','BODY'],
+            };
+            foreach($searchFields as $field){
                 $criteria=$field.' '.$quoted.$seenCriterion;
                 $matches=@imap_search($stream,$criteria,SE_UID,'UTF-8');
                 if($matches===false)$matches=@imap_search($stream,$criteria,SE_UID);

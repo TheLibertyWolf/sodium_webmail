@@ -8,7 +8,9 @@ $accounts = sodium_accessible_mail_accounts();
 $statusFilter = in_array($_GET['status'] ?? '', ['read', 'unread'], true) ? $_GET['status'] : 'all';
 $tagFilter = (int)($_GET['tag_id'] ?? 0);
 $searchQuery = mb_substr(trim((string)($_GET['q'] ?? '')), 0, 120);
-$searchCriteria = sodium_imap_search_criteria($searchQuery);
+$allowedSearchScopes = ['correspondents','subject','body','all'];
+$searchScope = in_array((string)($_GET['scope'] ?? 'all'), $allowedSearchScopes, true) ? (string)($_GET['scope'] ?? 'all') : 'all';
+$searchCriteria = sodium_imap_search_criteria($searchQuery, $searchScope);
 $requestedLimit = (int)($_GET['limit'] ?? 25);
 $messageLimit = in_array($requestedLimit, [15,25,50,100], true) ? $requestedLimit : 25;
 $page = max(1, (int)($_GET['page'] ?? 1));
@@ -36,8 +38,8 @@ $pageCount=max(1,(int)ceil($messageTotal/$messageLimit));
 if($page>$pageCount)$page=$pageCount;
 $messageOffset=($page-1)*$messageLimit;
 $messages=array_slice($messages,$messageOffset,$messageLimit);
-$unifiedUrl=static function(array $overrides=[])use($statusFilter,$tagFilter,$messageLimit,$searchQuery):string{
-    $params=['status'=>$statusFilter,'tag_id'=>$tagFilter,'limit'=>$messageLimit,'q'=>$searchQuery];
+$unifiedUrl=static function(array $overrides=[])use($statusFilter,$tagFilter,$messageLimit,$searchQuery,$searchScope):string{
+    $params=['status'=>$statusFilter,'tag_id'=>$tagFilter,'limit'=>$messageLimit,'q'=>$searchQuery,'scope'=>$searchScope];
     foreach($overrides as $key=>$value)$params[$key]=$value;
     $params=array_filter($params,static fn($value,$key)=>!($key==='status'&&$value==='all')&&!($key==='tag_id'&&(int)$value===0)&&!($key==='page'&&(int)$value<=1),ARRAY_FILTER_USE_BOTH);
     return '/index.php'.($params?'?'.http_build_query($params):'');
@@ -56,6 +58,7 @@ sodium_render_header('Boîte de réception unifiée');
             <input type="hidden" name="status" value="<?= e($statusFilter) ?>"><input type="hidden" name="tag_id" value="<?= $tagFilter ?>"><input type="hidden" name="limit" value="<?= $messageLimit ?>">
             <input class="form-control" type="search" name="q" value="<?= e($searchQuery) ?>" placeholder="Rechercher dans toutes les boîtes" aria-label="Rechercher">
             <?php if($searchQuery!==''): ?><a class="btn btn-outline-secondary" href="<?= e($unifiedUrl(['q'=>'','page'=>1])) ?>" title="Effacer la recherche"><i class="bi bi-x-lg"></i></a><?php endif; ?>
+            <select class="form-select mail-search-scope" name="scope" aria-label="Périmètre de recherche"><option value="correspondents" <?= $searchScope==='correspondents'?'selected':'' ?>>Expéditeur/destinataire</option><option value="subject" <?= $searchScope==='subject'?'selected':'' ?>>Objet</option><option value="body" <?= $searchScope==='body'?'selected':'' ?>>Corps du message</option><option value="all" <?= $searchScope==='all'?'selected':'' ?>>Partout</option></select>
             <button class="btn btn-outline-secondary" type="submit" title="Rechercher"><i class="bi bi-search"></i></button>
         </form>
         <div class="btn-group btn-group-sm mail-status-filter">
