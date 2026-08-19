@@ -144,7 +144,7 @@ sodium_render_header('Gestion Comptes mails');
                             <?php elseif (!empty($account['last_error'])): ?>
                                 <span class="badge text-bg-danger" title="<?= e($account['last_error']) ?>"><i class="bi bi-x-circle me-1"></i>Déconnecté</span>
                             <?php elseif (!empty($account['last_sync_at'])): ?>
-                                <span class="badge text-bg-success" title="Dernière relève : <?= e(date('d/m/Y H:i', strtotime((string)$account['last_sync_at']))) ?>"><i class="bi bi-check-circle me-1"></i>Connecté</span>
+                                <span class="badge text-bg-success" title="Dernière relève : <?= e(sodium_format_date($account['last_sync_at'],'d/m/Y H:i','date inconnue')) ?>"><i class="bi bi-check-circle me-1"></i>Connecté</span>
                             <?php else: ?>
                                 <span class="badge text-bg-secondary"><i class="bi bi-hourglass-split me-1"></i>À vérifier</span>
                             <?php endif; ?>

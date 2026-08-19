@@ -872,6 +872,7 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
         $overview = @imap_fetch_overview($stream, implode(',', $uids), FT_UID) ?: [];
         $messages = [];
         foreach ($overview as $item) {
+            $messageTimestamp = sodium_parse_timestamp($item->date ?? '');
             $from = sodium_decode_mime_header((string) ($item->from ?? 'Expéditeur inconnu'));
             $toRaw = (string)($item->to ?? '');
             $ccRaw = (string)($item->cc ?? '');
@@ -898,8 +899,8 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
                 'cc_addresses' => sodium_parse_email_addresses($ccRaw),
                 'bcc_addresses' => sodium_parse_email_addresses($bccRaw),
                 'subject' => $subject,
-                'date' => !empty($item->date) ? date('d/m/Y H:i', strtotime((string) $item->date)) : '',
-                'timestamp' => !empty($item->date) ? (int) strtotime((string) $item->date) : 0,
+                'date' => $messageTimestamp > 0 ? date('d/m/Y H:i', $messageTimestamp) : '',
+                'timestamp' => $messageTimestamp,
                 'unread' => empty($item->seen),
                 'flagged' => !empty($item->flagged),
                 'has_attachment' => false,
@@ -1258,6 +1259,7 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
         $messageId = trim((string)($overview->message_id ?? ''));
         $toRaw = (string)($overview->to ?? '');
         $ccRaw = (string)($overview->cc ?? '');
+        $messageTimestamp=sodium_parse_timestamp($overview->date??'');
         return [
             'uid'=>$uid,
             'message_id'=>$messageId,
@@ -1272,13 +1274,31 @@ function sodium_fetch_message_content(array $account, string $folder, int $uid):
             'to_addresses'=>sodium_parse_email_addresses($toRaw),
             'cc_addresses'=>sodium_parse_email_addresses($ccRaw),
             'subject'=>sodium_message_subject((string)($overview->subject ?? '')),
-            'date'=>!empty($overview->date) ? date('d/m/Y H:i', strtotime((string)$overview->date)) : '',
+            'date'=>$messageTimestamp>0?date('d/m/Y H:i',$messageTimestamp):'',
             'html'=>$result['html'] !== '' ? sodium_sanitize_email_html($result['html'], true) : nl2br(e($result['plain'])),
             'attachments'=>$result['attachments'],
         ];
     } finally {
         imap_close($stream);
     }
+}
+
+function sodium_parse_timestamp(mixed $value): int
+{
+    if (is_int($value)) return $value > 0 ? $value : 0;
+    if (is_float($value)) return $value > 0 ? (int)$value : 0;
+    if($value instanceof DateTimeInterface)return max(0,$value->getTimestamp());
+    if(!is_scalar($value)&&!$value instanceof Stringable)return 0;
+    try{$raw=trim((string)$value);}catch(Throwable){return 0;}
+    if($raw==='')return 0;
+    try{$timestamp=strtotime($raw);}catch(Throwable){return 0;}
+    return $timestamp===false||$timestamp<=0?0:$timestamp;
+}
+
+function sodium_format_date(mixed $value, string $format, string $fallback = ''): string
+{
+    $timestamp=sodium_parse_timestamp($value);
+    return $timestamp>0?date($format,$timestamp):$fallback;
 }
 
 function sodium_human_date(int $timestamp): string
@@ -1544,7 +1564,8 @@ function sodium_restore_composed_sent_copy(int $composedId): bool
     $senderName=(string)($message['display_name']?:$message['email_address']);
     if(!empty($message['signature_id'])){$s=$pdo->prepare('SELECT sender_name FROM sodium_signatures WHERE id=?');$s->execute([(int)$message['signature_id']]);$senderName=(string)($s->fetchColumn()?:$senderName);}
     $domain=substr(strrchr((string)$message['email_address'],'@')?:'@localhost',1);
-    $headers=['From: '.mb_encode_mimeheader($senderName).' <'.$message['email_address'].'>','To: '.implode(', ',array_map(static fn(string $mail):string=>'<'.$mail.'>',$to)),'Subject: '.mb_encode_mimeheader((string)$message['composed_subject']),'Date: '.date(DATE_RFC2822,strtotime((string)($message['composed_sent_at']?:$message['composed_created_at']))),'Message-ID: <restored-'.bin2hex(random_bytes(12)).'@'.$domain.'>','MIME-Version: 1.0'];
+    $sentTimestamp=sodium_parse_timestamp($message['composed_sent_at']?:$message['composed_created_at'])?:time();
+    $headers=['From: '.mb_encode_mimeheader($senderName).' <'.$message['email_address'].'>','To: '.implode(', ',array_map(static fn(string $mail):string=>'<'.$mail.'>',$to)),'Subject: '.mb_encode_mimeheader((string)$message['composed_subject']),'Date: '.date(DATE_RFC2822,$sentTimestamp),'Message-ID: <restored-'.bin2hex(random_bytes(12)).'@'.$domain.'>','MIME-Version: 1.0'];
     if($cc)$headers[]='Cc: '.implode(', ',array_map(static fn(string $mail):string=>'<'.$mail.'>',$cc));
     $html='<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937">'.sodium_sanitize_email_html((string)$message['composed_content']).'</div>';
     $plain=trim(html_entity_decode(strip_tags(preg_replace('/<(br|\/p|\/div|\/li)>/i',"\n",$html)??$html),ENT_QUOTES|ENT_HTML5,'UTF-8'));

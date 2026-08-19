@@ -210,7 +210,7 @@ sodium_render_header('Profil');
                 <div class="vstack gap-2">
                     <?php foreach ($activeSessions as $session): $isCurrent = $currentSelector !== '' && $currentSelector === (string) $session['selector']; ?>
                         <div class="border rounded p-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
-                            <div><div class="fw-semibold"><i class="bi bi-phone me-1"></i><?= e($deviceLabel((string) ($session['user_agent'] ?? ''))) ?><?php if ($isCurrent): ?> <span class="badge text-bg-primary">Cet appareil</span><?php endif; ?></div><div class="small text-muted">IP <?= e($session['ip_address'] ?: 'inconnue') ?> · Dernière activité <?= e(date('d-m-Y H:i', strtotime((string) $session['last_used_at']))) ?></div></div>
+                            <div><div class="fw-semibold"><i class="bi bi-phone me-1"></i><?= e($deviceLabel((string) ($session['user_agent'] ?? ''))) ?><?php if ($isCurrent): ?> <span class="badge text-bg-primary">Cet appareil</span><?php endif; ?></div><div class="small text-muted">IP <?= e($session['ip_address'] ?: 'inconnue') ?> · Dernière activité <?= e(sodium_format_date($session['last_used_at'],'d-m-Y H:i','inconnue')) ?></div></div>
                             <form method="post"><input type="hidden" name="action" value="revoke_session"><input type="hidden" name="session_id" value="<?= (int) $session['id'] ?>"><button class="btn btn-outline-danger btn-sm">Révoquer</button></form>
                         </div>
                     <?php endforeach; ?>
