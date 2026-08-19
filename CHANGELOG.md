@@ -2,6 +2,17 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [0.10.0] — 2026-08-19
+
+### Améliorations
+
+- ajout d’un compte expéditeur par défaut, configurable par utilisateur dans Paramètres → Messages et utilisé lors d’une nouvelle rédaction depuis une vue unifiée.
+
+### Corrections
+
+- remplacement isolé de la signature lors d’un changement d’expéditeur : le corps, les modèles et le message cité sont désormais préservés quelle que soit la position configurée de la signature ;
+- la signature est enveloppée dans une `<div class="signature">` indépendante avec son propre espacement, sans paragraphes éditables susceptibles de contenir puis de supprimer le texte saisi.
+
 ## [0.9.4] — 2026-08-09
 
 ### Améliorations

@@ -195,7 +195,7 @@ function sodium_render_header(string $title): void
             <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
                 <div class="modal-header"><div><div class="text-danger small fw-semibold text-uppercase">À propos</div><h2 class="modal-title h4 mb-0" id="aboutModalLabel">Sodium</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 0.9.4 bêta</span></div>
+                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 0.10.0 bêta</span></div>
                     <h3 class="h6">Édition et réalisation</h3><p><strong>Sodium Webmail</strong> est un logiciel SaaS conçu, édité et maintenu par <strong>Jessy System</strong>. Il centralise l’accès aux comptes de messagerie attribués aux utilisateurs autorisés dans un environnement professionnel privé.</p>
                     <h3 class="h6">Licence d’exploitation</h3><p>Cette instance est mise à disposition dans le cadre d’une licence d’exploitation SaaS <code><?=e($appLicense['license_type']??'non enregistrée')?></code> concédée à <code><?=e($appLicense['rights_holder']??'ayant droit non enregistré')?></code><?php if(!empty($appLicense['registered_at'])): ?>, enregistrée le <code><?=e(sodium_format_date($appLicense['registered_at'],'d/m/Y','date inconnue'))?></code><?php endif; ?><?php if(!empty($appLicense['expires_at'])&&$appLicense['expires_at']<'9999-01-01'): ?> et valable jusqu’au <code><?=e(sodium_format_date($appLicense['expires_at'],'d/m/Y','date inconnue'))?></code><?php elseif(!empty($appLicense['expires_at'])): ?>, pour une durée <code>perpétuelle</code><?php endif; ?>. Elle confère un droit personnel d’accès et d’utilisation du service sur le domaine autorisé, dans les limites fonctionnelles, techniques et contractuelles convenues. Elle n’emporte aucune cession des droits de propriété intellectuelle sur le logiciel.</p>
                     <h3 class="h6">Propriété intellectuelle et étendue des droits</h3><p>L’architecture, le code, l’interface, les développements, les textes, les éléments graphiques, les bases de données et les composants de Sodium demeurent protégés. Sauf autorisation écrite ou exception prévue par la loi, sont interdits la reproduction, la mise à disposition de tiers, la sous-licence, la commercialisation, l’extraction substantielle, l’adaptation ou le contournement des dispositifs techniques de licence. Les droits strictement nécessaires à l’utilisation conforme du logiciel par l’ayant droit demeurent réservés conformément aux dispositions légales applicables.</p>
@@ -208,7 +208,7 @@ function sodium_render_header(string $title): void
                     <h3 class="h6">Protection des données</h3><p>L’ayant droit demeure responsable de la détermination des finalités et des habilitations associées aux traitements réalisés au moyen de Sodium. Les mesures de sécurité, de confidentialité, de sauvegarde et de gestion des incidents doivent être organisées conformément aux rôles effectifs des parties et à la réglementation applicable. Les présentes informations ne remplacent pas un contrat de licence, un accord de niveau de service ou un accord de traitement des données lorsqu’un tel document est requis.</p>
                     <div class="border rounded p-3 bg-body-tertiary"><strong>Copyright © 2026 Jessy System — Tous droits réservés.</strong><br><span class="text-muted">Produit : <code><?=e($appLicense['product_name']??'Sodium Webmail')?></code> · Domaine autorisé : <code><?=e($appLicense['allowed_domain']??'non enregistré')?></code> · Statut : <code><?=e(!empty($appLicense['is_valid'])?'licence active':'activation requise')?></code>.</span></div>
                 </div>
-                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 0.9.4 bêta</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 0.10.0 bêta</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
         </div>
 
@@ -245,6 +245,9 @@ function sodium_render_footer(): void
     $accounts = sodium_accessible_mail_accounts();
     $user = current_user();
     $sodiumSettings = sodium_user_settings((int)($user['id'] ?? 0));
+    $sendAccountIds=array_map('intval',array_column(array_values(array_filter($accounts,static fn(array $account):bool=>!empty($account['can_send']))),'id'));
+    $defaultComposeAccountId=(int)($sodiumSettings['default_compose_account_id']??0);
+    if(!in_array($defaultComposeAccountId,$sendAccountIds,true))$defaultComposeAccountId=$sendAccountIds[0]??0;
     $signatures = [];
     $replyTemplates = [];
     $readerFolders = [];
@@ -322,7 +325,7 @@ function sodium_render_footer(): void
                 <input type="hidden" name="forward_uid" value="">
                 <div class="modal-header"><h2 class="modal-title h5"><i class="bi bi-pencil-square me-2"></i>Nouveau message</h2><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body"><div class="row g-0 compose-layout"><div class="col-xl-9 compose-main"><div class="row g-3">
-                    <div class="col-md-5"><label class="form-label">Expéditeur</label><select class="form-select" name="mail_account_id" id="composeAccount" required><?php foreach ($accounts as $account): ?><?php if (!empty($account['can_send'])): ?><option value="<?= (int)$account['id'] ?>"><?= e($account['display_name'] ?: $account['email_address']) ?> — <?= e($account['email_address']) ?></option><?php endif; ?><?php endforeach; ?></select></div>
+                    <div class="col-md-5"><label class="form-label">Expéditeur</label><select class="form-select" name="mail_account_id" id="composeAccount" required><?php foreach ($accounts as $account): ?><?php if (!empty($account['can_send'])): ?><option value="<?= (int)$account['id'] ?>" <?= $defaultComposeAccountId===(int)$account['id']?'selected':'' ?>><?= e($account['display_name'] ?: $account['email_address']) ?> — <?= e($account['email_address']) ?></option><?php endif; ?><?php endforeach; ?></select></div>
                     <div class="col-md-4"><label class="form-label">Signature</label><select class="form-select" name="signature_id" id="composeSignature"><option value="">Signature du profil</option><?php foreach ($signatures as $signature): ?><option value="<?= (int)$signature['id'] ?>" data-account="<?= (int)$signature['mail_account_id'] ?>" data-content="<?= e($signature['content_html']) ?>" <?= $signature['is_default']?'data-default="1"':'' ?>><?= e($signature['name']) ?> — <?= e($signature['sender_name']) ?></option><?php endforeach; ?></select></div>
                     <div class="col-md-3"><label class="form-label">Priorité</label><select class="form-select" name="priority"><option value="normal">Normale</option><option value="high">Haute</option><option value="low">Basse</option></select></div>
                     <?php if ($replyTemplates): ?><div class="col-12"><label class="form-label">Modèle de réponse</label><select class="form-select" id="composeTemplate"><option value="">Choisir un modèle…</option><?php foreach($replyTemplates as $template): ?><option value="<?= (int)$template['id'] ?>" data-account="<?= (int)($template['mail_account_id'] ?? 0) ?>" data-subject="<?= e($template['subject']) ?>" data-content="<?= e($template['content_html']) ?>"><?= e($template['name']) ?></option><?php endforeach; ?></select></div><?php endif; ?>
@@ -481,21 +484,22 @@ function sodium_render_footer(): void
                 const applyComposeSignature = () => {
                     const editor = document.querySelector('#composeModal .rich-editor-content');
                     if (!editor || !composeSignature) return;
-                    editor.querySelectorAll('[data-sodium-signature], [data-sodium-signature-spacer]').forEach(element => element.remove());
+                    editor.querySelectorAll('[data-sodium-signature-spacer]').forEach(spacer => {
+                        const meaningful=spacer.innerHTML.replace(/<br\s*\/?>|&nbsp;|\s/gi,'');
+                        if(meaningful){const preserved=document.createElement('p');preserved.innerHTML=spacer.innerHTML;spacer.before(preserved);}
+                        spacer.remove();
+                    });
+                    editor.querySelectorAll('[data-sodium-signature]').forEach(element => element.remove());
                     const option = composeSignature.selectedOptions[0];
                     if (!option?.value || !option.dataset.content) return;
-                    const spacerOne = document.createElement('p');
-                    const spacerTwo = document.createElement('p');
-                    spacerOne.dataset.sodiumSignatureSpacer = '1';
-                    spacerTwo.dataset.sodiumSignatureSpacer = '1';
-                    spacerOne.innerHTML = '<br>';
-                    spacerTwo.innerHTML = '<br>';
                     const signature = document.createElement('div');
+                    signature.className = 'signature';
                     signature.dataset.sodiumSignature = option.value;
+                    signature.style.marginTop = '2em';
                     signature.innerHTML = option.dataset.content;
                     const quote = editor.querySelector('[data-sodium-quote]');
-                    if (quote && signaturePosition === 'before_quote') quote.before(spacerOne, spacerTwo, signature);
-                    else editor.append(spacerOne, spacerTwo, signature);
+                    if (quote && signaturePosition === 'before_quote') quote.before(signature);
+                    else editor.append(signature);
                 };
                 const syncSignatures = () => {
                     if (!composeAccount || !composeSignature) return;
@@ -515,11 +519,12 @@ function sodium_render_footer(): void
                 const focusComposeEditor = () => {
                     const editor = document.querySelector('#composeModal .rich-editor-content');
                     if (!editor) return;
+                    let target = Array.from(editor.children).find(element => !element.matches('[data-sodium-signature],[data-sodium-signature-spacer],[data-sodium-quote]'));
+                    if(!target){target=document.createElement('p');target.innerHTML='<br>';const anchor=editor.querySelector('[data-sodium-signature],[data-sodium-quote]');anchor?anchor.before(target):editor.prepend(target);}
                     editor.focus();
                     const selection = window.getSelection();
                     if (!selection) return;
                     const range = document.createRange();
-                    const target = Array.from(editor.children).find(element => !element.matches('[data-sodium-signature]')) || editor;
                     range.selectNodeContents(target);
                     range.collapse(true);
                     selection.removeAllRanges();

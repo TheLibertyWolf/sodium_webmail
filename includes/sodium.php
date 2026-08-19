@@ -102,6 +102,7 @@ function sodium_ensure_schema(): void
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     sodium_ensure_column('sodium_user_settings', 'send_delay', 'SMALLINT UNSIGNED NOT NULL DEFAULT 10');
+    sodium_ensure_column('sodium_user_settings', 'default_compose_account_id', 'INT UNSIGNED NULL');
 
     sodium_ensure_column('sodium_mail_accounts', 'password_cipher', 'TEXT NULL');
     sodium_ensure_column('sodium_mail_accounts', 'label_text', "VARCHAR(60) NOT NULL DEFAULT ''");
@@ -469,7 +470,7 @@ function sodium_verify_license_key(string $licenseKey): array
     if(!preg_match('/^[a-f0-9]{128}$/',strtolower($licenseKey)))return ['status'=>'invalid','message'=>'Format de clé invalide.'];
     if(!function_exists('curl_init'))return ['status'=>'invalid','message'=>'Service de vérification indisponible.'];
     $curl=curl_init('https://licence.jessysystem.com/');
-    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.9.4'])]);
+    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'0.10.0'])]);
     $body=curl_exec($curl);$code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$error=curl_error($curl);curl_close($curl);
     if($body===false||$code!==200)return ['status'=>'invalid','message'=>$error!==''?'Serveur de licences inaccessible.':'Réponse invalide du serveur de licences.'];
     $result=json_decode((string)$body,true);
@@ -524,9 +525,9 @@ function sodium_user_settings(?int $userId = null): array
     global $pdo;
     sodium_ensure_schema();
     $userId ??= (int)(current_user()['id'] ?? 0);
-    $defaults = ['refresh_interval'=>1, 'send_delay'=>10, 'quote_reply'=>1, 'signature_position'=>'before_quote'];
+    $defaults = ['refresh_interval'=>1, 'send_delay'=>10, 'quote_reply'=>1, 'signature_position'=>'before_quote', 'default_compose_account_id'=>0];
     if (!$userId) return $defaults;
-    $stmt = $pdo->prepare('SELECT refresh_interval,send_delay,quote_reply,signature_position FROM sodium_user_settings WHERE user_id=?');
+    $stmt = $pdo->prepare('SELECT refresh_interval,send_delay,quote_reply,signature_position,default_compose_account_id FROM sodium_user_settings WHERE user_id=?');
     $stmt->execute([$userId]);
     $settings = $stmt->fetch();
     return $settings ? array_merge($defaults, $settings) : $defaults;

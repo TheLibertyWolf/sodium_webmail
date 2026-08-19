@@ -9,10 +9,11 @@ $canManage = sodium_can('sodium_settings_manage');
 $currentUserId=(int)(current_user()['id']??0);
 $allowedIntervals = [1,5,8,10,15,30,60];
 $allowedSendDelays = [1,3,5,10,15,30,60];
+$messageAccounts=sodium_accessible_mail_accounts();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$canManage) { http_response_code(403); exit('Gestion des paramètres non autorisée.'); }
     if(($_POST['action']??'')==='auto_reply'){
-        $messageAccounts=sodium_accessible_mail_accounts();$accessibleIds=array_map('intval',array_column($messageAccounts,'id'));
+        $accessibleIds=array_map('intval',array_column($messageAccounts,'id'));
         $id=(int)($_POST['id']??0);
         if(($_POST['rule_action']??'save')==='delete'){
             $pdo->prepare('DELETE FROM sodium_auto_reply_rules WHERE id=? AND user_id=?')->execute([$id,$currentUserId]);
@@ -52,15 +53,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $signaturePosition = in_array($_POST['signature_position'] ?? '', ['before_quote','after_quote'], true)
         ? (string)$_POST['signature_position']
         : 'before_quote';
-    $pdo->prepare('INSERT INTO sodium_user_settings (user_id,refresh_interval,send_delay,quote_reply,signature_position)
-        VALUES (?,?,?,?,?) ON DUPLICATE KEY UPDATE refresh_interval=VALUES(refresh_interval),send_delay=VALUES(send_delay),
-        quote_reply=VALUES(quote_reply),signature_position=VALUES(signature_position),updated_at=NOW()')
-        ->execute([$currentUserId,$interval,$sendDelay,$quoteReply,$signaturePosition]);
+    $sendAccountIds=array_map('intval',array_column(array_values(array_filter($messageAccounts,static fn(array $account):bool=>!empty($account['can_send']))),'id'));
+    $defaultComposeAccountId=(int)($_POST['default_compose_account_id']??0);
+    if(!in_array($defaultComposeAccountId,$sendAccountIds,true))$defaultComposeAccountId=0;
+    $pdo->prepare('INSERT INTO sodium_user_settings (user_id,refresh_interval,send_delay,quote_reply,signature_position,default_compose_account_id)
+        VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE refresh_interval=VALUES(refresh_interval),send_delay=VALUES(send_delay),
+        quote_reply=VALUES(quote_reply),signature_position=VALUES(signature_position),default_compose_account_id=VALUES(default_compose_account_id),updated_at=NOW()')
+        ->execute([$currentUserId,$interval,$sendDelay,$quoteReply,$signaturePosition,$defaultComposeAccountId?:null]);
     flash('success', 'Préférences de messages enregistrées.');
     redirect('/messages.php');
 }
 $settings = sodium_user_settings($currentUserId);
-$messageAccounts=sodium_accessible_mail_accounts();
 $autoRules=[];$autoScope=[];
 $stmt=$pdo->prepare('SELECT * FROM sodium_auto_reply_rules WHERE user_id=? ORDER BY enabled DESC,starts_at DESC,id DESC');$stmt->execute([$currentUserId]);$autoRules=$stmt->fetchAll();
 if($autoRules){$ruleIds=array_map('intval',array_column($autoRules,'id'));$stmt=$pdo->prepare('SELECT rule_id,mail_account_id FROM sodium_auto_reply_rule_accounts WHERE rule_id IN ('.implode(',',array_fill(0,count($ruleIds),'?')).')');$stmt->execute($ruleIds);foreach($stmt->fetchAll() as $scope)$autoScope[(int)$scope['rule_id']][]=(int)$scope['mail_account_id'];}
@@ -85,7 +88,7 @@ sodium_render_header('Messages');
         <div class="p-4 border-bottom">
             <h3 class="h6 mb-1"><i class="bi bi-send me-2"></i>Envoi</h3>
             <p class="text-muted mb-3">Délai de sécurité pendant lequel un message peut encore être annulé.</p>
-            <label class="form-label" for="sendDelay">Délai avant envoi</label><select class="form-select" id="sendDelay" name="send_delay" <?= $canManage?'':'disabled' ?>><?php foreach($allowedSendDelays as $seconds):?><option value="<?=$seconds?>" <?= (int)$settings['send_delay']===$seconds?'selected':'' ?>><?=$seconds?> seconde<?=$seconds>1?'s':''?></option><?php endforeach;?></select><div class="form-text">La boîte d’envoi s’actualise automatiquement une seconde après ce délai.</div>
+            <div class="row g-3"><div class="col-lg-6"><label class="form-label" for="defaultComposeAccount">Compte expéditeur par défaut</label><select class="form-select" id="defaultComposeAccount" name="default_compose_account_id" <?= $canManage?'':'disabled' ?>><option value="0">Premier compte accessible</option><?php foreach($messageAccounts as $messageAccount):if(empty($messageAccount['can_send']))continue;?><option value="<?=(int)$messageAccount['id']?>" <?= (int)$settings['default_compose_account_id']===(int)$messageAccount['id']?'selected':'' ?>><?=e($messageAccount['display_name']?:$messageAccount['email_address'])?> — <?=e($messageAccount['email_address'])?></option><?php endforeach;?></select><div class="form-text">Utilisé pour les nouveaux messages commencés depuis une vue unifiée.</div></div><div class="col-lg-6"><label class="form-label" for="sendDelay">Délai avant envoi</label><select class="form-select" id="sendDelay" name="send_delay" <?= $canManage?'':'disabled' ?>><?php foreach($allowedSendDelays as $seconds):?><option value="<?=$seconds?>" <?= (int)$settings['send_delay']===$seconds?'selected':'' ?>><?=$seconds?> seconde<?=$seconds>1?'s':''?></option><?php endforeach;?></select><div class="form-text">La boîte d’envoi s’actualise automatiquement une seconde après ce délai.</div></div></div>
         </div>
         <div class="p-4 border-bottom">
             <h3 class="h6 mb-1"><i class="bi bi-reply me-2"></i>Réponses</h3>
