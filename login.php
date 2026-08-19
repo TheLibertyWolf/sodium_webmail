@@ -35,7 +35,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             unset($_SESSION['sodium_login_redirect']);
             redirect(is_string($redirect) && str_starts_with($redirect, '/') ? $redirect : '/index.php');
         }
-        $error = 'Code 2FA incorrect.';
+        $error = sodium_t('auth.invalid');
     } else {
         unset($_SESSION['sodium_pending_2fa_user_id'], $_SESSION['sodium_pending_remember_me']);
         $password = $_POST['password'] ?? '';
@@ -82,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     redirect(is_string($redirect) && str_starts_with($redirect, '/') ? $redirect : '/index.php');
                 }
             } else {
-                $error = 'Identifiants incorrects.';
+            $error = sodium_t('auth.invalid');
             }
         }
     }
@@ -91,16 +91,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $showTwofa = !empty($_SESSION['sodium_pending_2fa_user_id']);
 ?>
 <!doctype html>
-<html lang="fr">
+<html lang="<?= e(sodium_locale()) ?>">
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Connexion - <?= e(SODIUM_APP_NAME) ?></title>
+    <title><?= e(sodium_t('auth.login.title')) ?> - <?= e(SODIUM_APP_NAME) ?></title>
     <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
     <link href="/css/app.css?v=20260729-01" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="shortcut icon" href="/assets/icons/favicon-64.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-180.png">
+    <script>window.SodiumI18n=<?= json_encode(['locale'=>sodium_locale(),'map'=>sodium_browser_translation_map()],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;</script>
     <?php if (!$showTwofa && $turnstileEnabled): ?><script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script><?php endif; ?>
 </head>
 <body class="auth-page">
@@ -119,7 +120,7 @@ $showTwofa = !empty($_SESSION['sodium_pending_2fa_user_id']);
                 <form method="post">
                     <input type="hidden" name="action" value="verify_2fa">
                     <div class="mb-3">
-                        <label class="form-label" for="twofa_code">Code 2FA</label>
+                        <label class="form-label" for="twofa_code"><?= e(sodium_t('auth.twofa')) ?></label>
                         <input class="form-control" id="twofa_code" name="twofa_code" inputmode="numeric" pattern="[0-9]{6}" autocomplete="one-time-code" required autofocus>
                     </div>
                     <button class="btn btn-danger w-100" type="submit">Valider</button>
@@ -140,14 +141,15 @@ $showTwofa = !empty($_SESSION['sodium_pending_2fa_user_id']);
                         <label class="form-check-label" for="remember_me">Se souvenir de moi</label>
                     </div>
                     <?php if ($turnstileEnabled): ?><div class="cf-turnstile mb-3" data-sitekey="<?= e($turnstileSiteKey) ?>" data-theme="light"></div><?php endif; ?>
-                    <button class="btn btn-danger w-100" type="submit">Se connecter</button>
+                    <button class="btn btn-danger w-100" type="submit"><?= e(sodium_t('auth.login')) ?></button>
                 </form>
             <?php endif; ?>
             <div class="text-center mt-3">
-                <a href="/password-lost.php" class="link-secondary">Mot de passe perdu</a>
+                <a href="/password-lost.php" class="link-secondary"><?= e(sodium_t('auth.lost')) ?></a>
             </div>
         </div>
     </div>
-    <footer class="auth-footer">© <?= date('Y') ?> Jessy System — Tous droits réservés</footer>
+    <footer class="auth-footer">© <?= date('Y') ?> Jessy System — <?= e(sodium_t('auth.rights')) ?></footer>
+    <script src="/js/i18n.js?v=20260819-01"></script>
 </body>
 </html>

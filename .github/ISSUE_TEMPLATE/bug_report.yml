@@ -1,0 +1,41 @@
+name: Rapport d’anomalie
+description: Signaler un comportement reproductible de Sodium
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: "Ne publiez aucun secret, contenu de mail ou donnée personnelle. Pour une vulnérabilité, consultez SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: Version de Sodium
+      placeholder: "0.11.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: language
+    attributes:
+      label: Langue de l’interface
+      options: [Français, English, Deutsch, Italiano, Español, Português]
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: Description et étapes de reproduction
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Environnement
+      placeholder: "PHP, navigateur, ordinateur/mobile"
+    validations:
+      required: true

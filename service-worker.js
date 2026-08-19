@@ -1,10 +1,11 @@
-const CACHE_NAME = 'sodium-static-v48';
+const CACHE_NAME = 'sodium-static-v49';
 const STATIC_ASSETS = [
     '/css/app.css?v=20260818-03',
     '/assets/vendor/bootstrap/bootstrap.min.css',
     '/assets/vendor/bootstrap/bootstrap.bundle.min.js',
     '/assets/vendor/bootstrap-icons/bootstrap-icons.css',
     '/assets/vendor/bootstrap-icons/fonts/bootstrap-icons.woff2',
+    '/js/i18n.js?v=20260819-01',
     '/assets/icons/favicon-64.png',
     '/assets/icons/apple-touch-180.png',
     '/assets/icons/pwa-192.png',

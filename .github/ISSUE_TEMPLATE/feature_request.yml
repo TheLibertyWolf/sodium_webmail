@@ -1,0 +1,22 @@
+name: Demande d’évolution
+description: Proposer une amélioration fonctionnelle
+title: "[Évolution] "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: need
+    attributes:
+      label: Besoin
+      description: Décrivez le problème métier à résoudre.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Solution proposée
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives envisagées

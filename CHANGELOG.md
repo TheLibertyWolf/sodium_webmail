@@ -2,6 +2,22 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [0.11.0] — 2026-08-19
+
+### Internationalisation
+
+- ajout des langues française, anglaise, allemande, italienne, espagnole et portugaise ;
+- choix de la langue dès l’accueil du wizard, puis enregistrement comme langue initiale de l’instance et du compte administrateur ;
+- préférence de langue modifiable par chaque utilisateur depuis son profil et synchronisée sur tous ses appareils ;
+- traduction de la navigation, de l’authentification et des principales actions, y compris les fenêtres générées dynamiquement, sans modifier les contenus des messages.
+
+### Projet GitHub
+
+- ajout du code de conduite, du guide de contribution, de la politique de sécurité, du support et du guide de traduction ;
+- ajout de modèles structurés pour les anomalies et demandes d’évolution ;
+- ajout d’un contrôle automatique de syntaxe PHP et de la surveillance Dependabot des dépendances npm ;
+- enrichissement du README avec les badges du projet et les liens communautaires.
+
 ## [0.10.0] — 2026-08-19
 
 ### Améliorations

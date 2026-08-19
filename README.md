@@ -1,6 +1,12 @@
 # Sodium Webmail
 
-`Version 0.10.0 bêta`
+[![Version](https://img.shields.io/github/v/tag/TheLibertyWolf/sodium_webmail?include_prereleases&style=flat-square&color=dc3545)](https://github.com/TheLibertyWolf/sodium_webmail/tags)
+[![Contrôle PHP](https://img.shields.io/github/actions/workflow/status/TheLibertyWolf/sodium_webmail/php-lint.yml?branch=main&style=flat-square&label=PHP)](https://github.com/TheLibertyWolf/sodium_webmail/actions/workflows/php-lint.yml)
+![PHP ≥ 8.2](https://img.shields.io/badge/PHP-%E2%89%A5%208.2-777BB4?style=flat-square&logo=php&logoColor=white)
+![Langues](https://img.shields.io/badge/langues-FR%20%7C%20EN%20%7C%20DE%20%7C%20IT%20%7C%20ES%20%7C%20PT-0dcaf0?style=flat-square)
+[![Licence propriétaire](https://img.shields.io/badge/licence-propri%C3%A9taire-dc3545?style=flat-square)](LICENSE.md)
+
+`Version 0.11.0 bêta`
 
 Sodium est un webmail professionnel multi-utilisateurs et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
 
@@ -26,6 +32,7 @@ L’interface réunit l’authentification, la boîte de réception unifiée, la
 - messages marqués, filtres lu/non lu et actions multiples ;
 - notifications de bureau et Web Push ;
 - thèmes clair et sombre, interface responsive et PWA ;
+- interface disponible en français, anglais, allemand, italien, espagnol et portugais, avec préférence propre à chaque utilisateur ;
 - gestion autonome des utilisateurs, comptes, habilitations et paramètres d’instance ;
 - obligation 2FA configurable individuellement par utilisateur ;
 - protection Cloudflare Turnstile administrable depuis les paramètres de sécurité ;
@@ -180,3 +187,7 @@ Avant toute mise à jour :
 Sodium est un logiciel propriétaire édité par Jessy System. Son installation et son utilisation nécessitent une licence valide affectée au domaine. Consultez [LICENSE.md](LICENSE.md) pour les conditions générales applicables.
 
 Copyright © 2026 Jessy System — Tous droits réservés.
+
+## Projet et contributions
+
+Avant de participer, consultez le [guide de contribution](CONTRIBUTING.md), le [code de conduite](CODE_OF_CONDUCT.md), la [politique de sécurité](SECURITY.md), le [support](SUPPORT.md) et le [guide de traduction](TRANSLATIONS.md).

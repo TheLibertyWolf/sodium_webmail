@@ -39,6 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('/profile.php');
     }
 
+    if ($action === 'language') {
+        $language = sodium_normalize_locale((string) ($_POST['language'] ?? 'fr'));
+        $pdo->prepare('UPDATE users SET language=?, updated_at=NOW() WHERE id=?')->execute([$language, (int) $user['id']]);
+        flash('success', sodium_t('language.updated', [], $language));
+        redirect('/profile.php');
+    }
+
     if ($action === 'enable_2fa') {
         $secret = (string) ($_SESSION['twofa_setup_secret'] ?? '');
         $code = trim((string) ($_POST['twofa_code'] ?? ''));
@@ -129,6 +136,25 @@ $deviceLabel = static function (string $agent): string {
 sodium_render_header('Profil');
 ?>
 <div class="row justify-content-center g-4">
+    <div class="col-xl-8">
+        <div class="form-card">
+            <h2 class="h5 mb-1"><?= e(sodium_t('language.interface')) ?></h2>
+            <p class="small text-muted mb-3"><?= e(sodium_t('language.help')) ?></p>
+            <form method="post" class="row g-3 align-items-end">
+                <input type="hidden" name="action" value="language">
+                <div class="col-md-9">
+                    <label class="form-label" for="profileLanguage"><?= e(sodium_t('language')) ?></label>
+                    <select class="form-select" id="profileLanguage" name="language">
+                        <?php foreach (sodium_supported_languages() as $languageCode => $languageName): ?>
+                            <option value="<?= e($languageCode) ?>" <?= sodium_locale() === $languageCode ? 'selected' : '' ?>><?= e($languageName) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-3 d-grid"><button class="btn btn-danger" type="submit"><?= e(sodium_t('common.save')) ?></button></div>
+            </form>
+        </div>
+    </div>
+
     <div class="col-xl-8">
         <div class="form-card">
             <h2 class="h5 mb-3">Mes informations</h2>
