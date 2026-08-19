@@ -1,14 +1,11 @@
 # Sodium Webmail
 
-[![Version](https://img.shields.io/github/v/tag/TheLibertyWolf/sodium_webmail?include_prereleases&style=flat-square&color=dc3545)](https://github.com/TheLibertyWolf/sodium_webmail/tags)
-[![Contrôle PHP](https://img.shields.io/github/actions/workflow/status/TheLibertyWolf/sodium_webmail/php-lint.yml?branch=main&style=flat-square&label=PHP)](https://github.com/TheLibertyWolf/sodium_webmail/actions/workflows/php-lint.yml)
-![PHP ≥ 8.2](https://img.shields.io/badge/PHP-%E2%89%A5%208.2-777BB4?style=flat-square&logo=php&logoColor=white)
-![Langues](https://img.shields.io/badge/langues-FR%20%7C%20EN%20%7C%20DE%20%7C%20IT%20%7C%20ES%20%7C%20PT-0dcaf0?style=flat-square)
-[![Licence propriétaire](https://img.shields.io/badge/licence-propri%C3%A9taire-dc3545?style=flat-square)](LICENSE.md)
-
-`Version 0.11.0 bêta`
-
 Sodium est un webmail professionnel multi-utilisateurs et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
+[![Version](https://img.shields.io/badge/version-0.11.0-2271b1)](https://github.com/TheLibertyWolf/sodium_webmail/releases)
+[![PHP](https://img.shields.io/badge/PHP-%3E%3D%208.2-777bb4)](https://www.php.net/)
+[![MySQL](https://img.shields.io/badge/MySQL-%3E%3D%208.0-4479a1)](https://www.mysql.com/)
+[![License](https://img.shields.io/badge/license-propri%C3%A9taire-46b450)](LICENSE.md)
+[![Languages](https://img.shields.io/badge/languages-FR%20%7C%20EN%20%7C%20DE%20%7C%20IT%20%7C%20ES%20%7C%20PT-f48120)](#langues)
 
 ## Aperçu
 
@@ -89,6 +86,21 @@ Il n’est pas nécessaire d’accorder des privilèges globaux, la gestion des 
 - PWA avec manifeste et service worker.
 
 DataTables n’est pas requis par Sodium.
+
+## Langues
+
+La langue est choisie pendant l’installation puis peut être personnalisée dans le profil de chaque utilisateur. Le français est la langue source et de repli.
+
+| Langue | Locale Sodium | Couverture | État |
+|---|---|---:|---|
+| 🇫🇷 Français | `fr` | 125/125 — 100 % | Langue source |
+| 🇬🇧 Anglais | `en` | 125/125 — 100 % | Complet |
+| 🇩🇪 Allemand | `de` | 125/125 — 100 % | Complet |
+| 🇮🇹 Italien | `it` | 125/125 — 100 % | Complet |
+| 🇪🇸 Espagnol | `es` | 125/125 — 100 % | Complet |
+| 🇵🇹 Portugais | `pt` | 125/125 — 100 % | Complet |
+
+Les règles de traduction et de contribution sont détaillées dans [TRANSLATIONS.md](TRANSLATIONS.md).
 
 ## Installation
 
