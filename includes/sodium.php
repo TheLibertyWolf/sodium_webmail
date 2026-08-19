@@ -1291,7 +1291,13 @@ function sodium_parse_timestamp(mixed $value): int
     if(!is_scalar($value)&&!$value instanceof Stringable)return 0;
     try{$raw=trim((string)$value);}catch(Throwable){return 0;}
     if($raw==='')return 0;
-    try{$timestamp=strtotime($raw);}catch(Throwable){return 0;}
+    try{$timestamp=strtotime($raw);}catch(Throwable){$timestamp=false;}
+    if($timestamp===false){
+        $withoutComments=trim((string)preg_replace('/\s*\([^()]*\)\s*/',' ',$raw));
+        if($withoutComments!==''&&$withoutComments!==$raw){
+            try{$timestamp=strtotime($withoutComments);}catch(Throwable){$timestamp=false;}
+        }
+    }
     return $timestamp===false||$timestamp<=0?0:$timestamp;
 }
 

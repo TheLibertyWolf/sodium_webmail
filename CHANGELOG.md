@@ -15,7 +15,7 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 ### Corrections
 
-- sécurisation centralisée de toutes les dates : les en-têtes IMAP invalides ou les valeurs non interprétables affichent désormais une valeur neutre sans provoquer d’erreur PHP ;
+- sécurisation centralisée de toutes les dates : prise en charge des commentaires de fuseau RFC présents dans certains en-têtes IMAP et valeur neutre pour toute date réellement invalide, sans erreur PHP ni mauvais classement ;
 - suppression du défilement horizontal des dossiers vides sur mobile ;
 - fermeture de l’infobulle des destinataires avant l’ouverture d’un message envoyé afin qu’elle ne recouvre plus la fenêtre de lecture.
 
