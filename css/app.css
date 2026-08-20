@@ -8,6 +8,102 @@
     --text: #1f2937;
 }
 
+/* Thèmes utilisateur Sodium 1.2 */
+.theme-choice-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+}
+.dependency-choice { cursor: pointer; transition: border-color .15s ease, box-shadow .15s ease; }
+.btn-check:checked + .dependency-choice { border-color: var(--accent) !important; box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+
+.theme-choice {
+    position: relative;
+    display: grid;
+    grid-template-columns: 82px minmax(0, 1fr) 20px;
+    align-items: center;
+    gap: 12px;
+    min-height: 86px;
+    padding: 12px;
+    border: 1px solid var(--bs-border-color);
+    border-radius: 10px;
+    background: var(--bs-body-bg);
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+
+.theme-choice:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--accent) 55%, var(--bs-border-color)); }
+.theme-choice > input { position: absolute; opacity: 0; pointer-events: none; }
+.theme-choice:has(input:checked) { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent); }
+.theme-choice-copy strong, .theme-choice-copy small { display: block; }
+.theme-choice-copy small { margin-top: 3px; color: var(--bs-secondary-color); }
+.theme-choice-check { color: var(--accent); opacity: 0; }
+.theme-choice:has(input:checked) .theme-choice-check { opacity: 1; }
+.theme-choice-preview { position: relative; height: 56px; overflow: hidden; border: 1px solid rgba(100,116,139,.3); border-radius: 6px; background: #f7f8fa; }
+.theme-choice-preview i { position: absolute; inset: 0 auto 0 0; width: 25%; background: #0f172a; }
+.theme-choice-preview b { position: absolute; top: 8px; right: 7px; left: 32%; height: 8px; border-radius: 2px; background: #cbd5e1; }
+.theme-choice-preview em { position: absolute; top: 23px; right: 7px; bottom: 7px; left: 32%; border: 1px solid #dbe2ea; border-radius: 3px; background: #fff; }
+.theme-preview-dark .theme-choice-preview { background: #111827; }
+.theme-preview-dark .theme-choice-preview i { background: #0b1120; }
+.theme-preview-dark .theme-choice-preview b { background: #475569; }
+.theme-preview-dark .theme-choice-preview em { border-color: #475569; background: #1f2937; }
+.theme-preview-outlook .theme-choice-preview { border-radius: 2px; background: #f3f3f3; }
+.theme-preview-outlook .theme-choice-preview i { width: 28%; background: #0f6cbd; }
+.theme-preview-outlook .theme-choice-preview b { left: 35%; background: #0f6cbd; }
+.theme-preview-roundcube .theme-choice-preview { border-radius: 4px; background: #edf0f2; }
+.theme-preview-roundcube .theme-choice-preview i { width: 30%; background: #39424c; }
+.theme-preview-roundcube .theme-choice-preview b { left: 37%; background: #708090; }
+.theme-preview-roundcube .theme-choice-preview em { left: 37%; border-color: #aeb8c2; }
+
+html[data-sodium-theme="outlook"] {
+    --accent: #0f6cbd;
+    --body: #f3f3f3;
+    --text: #242424;
+    --sidebar: #f5f5f5;
+    --sidebar-soft: #e7f1fb;
+    --sidebar-fg: #323130;
+    --sidebar-fg-hover: #0f6cbd;
+    --bs-body-font-family: "Segoe UI", Arial, sans-serif;
+}
+html[data-sodium-theme="outlook"] .sidebar { background: #f5f5f5; border-right: 1px solid #e1dfdd; }
+html[data-sodium-theme="outlook"] .sidebar .nav-link:hover,
+html[data-sodium-theme="outlook"] .sidebar .nav-link.active { color: #0f6cbd; background: #e5f1fb; }
+html[data-sodium-theme="outlook"] .brand-text small,
+html[data-sodium-theme="outlook"] .mail-account-switcher .form-label,
+html[data-sodium-theme="outlook"] .module-title { color: #605e5c; }
+html[data-sodium-theme="outlook"] .sidebar-toggle,
+html[data-sodium-theme="outlook"] .mail-account-toggle { color: #323130; background: #fff; border-color: #d2d0ce; }
+html[data-sodium-theme="outlook"] .mail-context-card { background: #fff; border-color: #e1dfdd; }
+html[data-sodium-theme="outlook"] .form-card,
+html[data-sodium-theme="outlook"] .table-card { border-radius: 3px; box-shadow: 0 1px 2px rgba(0,0,0,.04); }
+html[data-sodium-theme="outlook"] .btn-danger { --bs-btn-bg:#0f6cbd;--bs-btn-border-color:#0f6cbd;--bs-btn-hover-bg:#115ea3;--bs-btn-hover-border-color:#115ea3; }
+
+html[data-sodium-theme="roundcube"] {
+    --accent: #2478b5;
+    --body: #e9edf0;
+    --text: #26323d;
+    --sidebar: #36414b;
+    --sidebar-soft: #45525e;
+    --sidebar-fg: #d7dfe6;
+    --sidebar-fg-hover: #fff;
+    --bs-body-font-family: Arial, Helvetica, sans-serif;
+}
+html[data-sodium-theme="roundcube"] .sidebar { background: linear-gradient(180deg,#3d4853,#2f3942); border-right: 1px solid #202830; }
+html[data-sodium-theme="roundcube"] .sidebar .nav-link { border-radius: 4px; }
+html[data-sodium-theme="roundcube"] .sidebar .nav-link:hover,
+html[data-sodium-theme="roundcube"] .sidebar .nav-link.active { background: #2478b5; color: #fff; }
+html[data-sodium-theme="roundcube"] .mail-context-card,
+html[data-sodium-theme="roundcube"] .mail-account-toggle { border-radius: 4px; }
+html[data-sodium-theme="roundcube"] .topbar { background: linear-gradient(#fff,#f1f3f5); border-bottom-color: #b9c2ca; }
+html[data-sodium-theme="roundcube"] .form-card,
+html[data-sodium-theme="roundcube"] .table-card,
+html[data-sodium-theme="roundcube"] .card { border-radius: 5px; border-color: #b9c2ca; box-shadow: 0 1px 3px rgba(30,45,55,.08); }
+html[data-sodium-theme="roundcube"] .btn-danger { --bs-btn-bg:#2478b5;--bs-btn-border-color:#2478b5;--bs-btn-hover-bg:#1d6396;--bs-btn-hover-border-color:#1d6396; }
+
+@media (max-width: 767.98px) {
+    .theme-choice-grid { grid-template-columns: 1fr; }
+}
+
 @keyframes mail-refresh-spin {
     to { transform: rotate(360deg); }
 }

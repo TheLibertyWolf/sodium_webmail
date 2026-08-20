@@ -11,6 +11,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     if($accountId){$check=$pdo->prepare('SELECT COUNT(*) FROM sodium_mail_accounts WHERE id=?');$check->execute([$accountId]);if(!$check->fetchColumn())$accountId=0;}
     $timezone=in_array($_POST['timezone']??'',['Europe/Paris','UTC','Europe/Brussels','Europe/Luxembourg','Europe/Zurich'],true)?(string)$_POST['timezone']:'Europe/Paris';
     $transport=in_array($_POST['system_mail_transport']??'',['smtp','brevo','php'],true)?(string)$_POST['system_mail_transport']:'smtp';
+    $dependencySource=in_array($_POST['dependency_source']??'',['local','remote'],true)?(string)$_POST['dependency_source']:'local';
     $brevoEmail=array_key_exists('system_brevo_from_email',$_POST)?trim((string)$_POST['system_brevo_from_email']):trim((string)($settings['system_brevo_from_email']??''));
     $brevoKey=trim((string)($_POST['system_brevo_api_key']??''));
     $savedSettings=[
@@ -22,6 +23,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         'system_mail_transport'=>$transport,
         'system_brevo_from_email'=>$brevoEmail,
         'timezone'=>$timezone,
+        'dependency_source'=>$dependencySource,
     ];
     if($brevoKey!=='')$savedSettings['system_brevo_api_cipher']=sodium_encrypt_secret($brevoKey);
     sodium_save_instance_settings($savedSettings);
@@ -54,6 +56,11 @@ sodium_render_header('Paramètres généraux');
         <div class="col-12 system-transport-fields" data-transport="smtp"><label class="form-label">Compte mail expéditeur</label><select class="form-select" name="system_mail_account_id"><option value="0">Non configuré</option><?php foreach($accounts as $account):?><option value="<?=(int)$account['id']?>" <?=(int)$settings['system_mail_account_id']===(int)$account['id']?'selected':''?>><?=e($account['display_name']?:$account['email_address'])?> — <?=e($account['email_address'])?></option><?php endforeach;?></select></div>
         <div class="col-12 system-transport-fields" data-transport="brevo"><div class="row g-3"><div class="col-md-6"><label class="form-label">Adresse expéditeur Brevo</label><input class="form-control" type="email" name="system_brevo_from_email" value="<?=e($settings['system_brevo_from_email']??'')?>" placeholder="no-reply@example.com"></div><div class="col-md-6"><label class="form-label">Clé API Brevo</label><input class="form-control font-monospace" type="password" name="system_brevo_api_key" autocomplete="new-password" placeholder="<?=$brevoConfigured?'Configurée — laisser vide pour conserver':'Renseigner la clé API'?>"><div class="form-text">La clé est chiffrée et ne sera jamais réaffichée.</div></div></div></div>
         <div class="col-12 system-transport-fields" data-transport="php"><div class="alert alert-warning mb-0"><i class="bi bi-exclamation-triangle me-2"></i>La fonction PHP <code>mail()</code> dépend de la configuration de l’hébergeur. Vérifiez SPF, DKIM et la délivrabilité du domaine avant de l’utiliser en production.</div></div>
+    </div></div></div>
+    <div class="col-12"><div class="form-card"><h2 class="h5 mb-1">Utilisation des dépendances</h2><p class="text-muted mb-3">Choisissez comment Sodium charge Bootstrap et Bootstrap Icons. Le mode local est recommandé et utilisé par défaut.</p><div class="row g-3">
+        <div class="col-lg-6"><input class="btn-check" type="radio" name="dependency_source" id="dependencyLocal" value="local" <?=($settings['dependency_source']??'local')==='local'?'checked':''?>><label class="dependency-choice border rounded-3 p-3 h-100 d-block" for="dependencyLocal"><span class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-hdd-stack text-success fs-4"></i><strong>Fichiers locaux <span class="badge text-bg-success ms-1">Recommandé</span></strong></span><span class="text-muted small d-block">Sodium reste autonome, plus prévisible et ne contacte aucun fournisseur tiers pour son interface. Ce mode utilise un peu d’espace disque et la bande passante du serveur.</span></label></div>
+        <div class="col-lg-6"><input class="btn-check" type="radio" name="dependency_source" id="dependencyRemote" value="remote" <?=($settings['dependency_source']??'local')==='remote'?'checked':''?>><label class="dependency-choice border rounded-3 p-3 h-100 d-block" for="dependencyRemote"><span class="d-flex align-items-center gap-2 mb-2"><i class="bi bi-cloud-arrow-down text-info fs-4"></i><strong>CDN distant</strong></span><span class="text-muted small d-block">Peut réduire le trafic local grâce au cache du CDN, mais dépend de jsDelivr. L’adresse IP et des métadonnées techniques du visiteur peuvent être transmises à ce fournisseur.</span></label></div>
+        <div class="col-12"><div class="alert alert-info mb-0"><i class="bi bi-shield-check me-2"></i>En mode distant, Sodium bascule automatiquement sur les fichiers locaux si le CDN ne répond pas.</div></div>
     </div></div></div>
     <div class="col-12"><button class="btn btn-danger" type="submit"><i class="bi bi-check-lg me-2"></i>Enregistrer</button></div>
 </form>

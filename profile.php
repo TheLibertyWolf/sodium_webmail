@@ -33,7 +33,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'theme') {
-        $theme = ($_POST['theme'] ?? 'light') === 'dark' ? 'dark' : 'light';
+        $theme = (string) ($_POST['theme'] ?? 'light');
+        if (!in_array($theme, ['light', 'dark', 'outlook', 'roundcube'], true)) $theme = 'light';
         $pdo->prepare('UPDATE users SET theme=?, updated_at=NOW() WHERE id=?')->execute([$theme, (int) $user['id']]);
         flash('success', 'Thème mis à jour.');
         redirect('/profile.php');
@@ -96,16 +97,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         redirect('/profile.php');
     }
 
-    $data = [
-        'address_line1' => trim((string) ($_POST['address_line1'] ?? '')),
-        'address_line2' => trim((string) ($_POST['address_line2'] ?? '')),
-        'postal_code' => trim((string) ($_POST['postal_code'] ?? '')),
-        'city' => trim((string) ($_POST['city'] ?? '')),
-        'phone' => trim((string) ($_POST['phone'] ?? '')),
-        'id' => (int) $user['id'],
-    ];
-    $pdo->prepare('UPDATE users SET address_line1=:address_line1, address_line2=:address_line2,
-        postal_code=:postal_code, city=:city, phone=:phone, updated_at=NOW() WHERE id=:id')->execute($data);
+    $data = ['phone' => trim((string) ($_POST['phone'] ?? '')), 'id' => (int) $user['id']];
+    $pdo->prepare('UPDATE users SET phone=:phone, updated_at=NOW() WHERE id=:id')->execute($data);
     flash('success', 'Profil mis à jour.');
     redirect('/profile.php');
 }
@@ -161,19 +154,11 @@ sodium_render_header('Profil');
             <form method="post">
                 <input type="hidden" name="action" value="profile">
                 <div class="row g-3">
-                    <div class="col-md-6"><label class="form-label">Prénom</label><input class="form-control" value="<?= e($user['first_name'] ?? '') ?>" disabled></div>
                     <div class="col-md-6"><label class="form-label">Nom</label><input class="form-control" value="<?= e($user['last_name'] ?? '') ?>" disabled></div>
-                    <div class="col-md-3"><label class="form-label">Sexe</label><input class="form-control" value="<?= e($user['gender'] ?? '') ?>" disabled></div>
-                    <div class="col-md-3"><label class="form-label">Date de naissance</label><input class="form-control" type="date" value="<?= e($user['birth_date'] ?? '') ?>" disabled></div>
-                    <div class="col-md-3"><label class="form-label">Lieu de naissance</label><input class="form-control" value="<?= e($user['birth_place'] ?? '') ?>" disabled></div>
-                    <div class="col-md-3"><label class="form-label">N° de sécurité sociale</label><input class="form-control" value="<?= e($user['social_security_number'] ?? '') ?>" disabled></div>
+                    <div class="col-md-6"><label class="form-label">Prénom</label><input class="form-control" value="<?= e($user['first_name'] ?? '') ?>" disabled></div>
                     <div class="col-md-6"><label class="form-label">Adresse mail</label><input class="form-control profile-locked-field" type="email" value="<?= e($user['email'] ?? '') ?>" disabled></div>
                     <div class="col-md-6"><label class="form-label">Adresse mail pro</label><input class="form-control profile-locked-field" type="email" value="<?= e($user['professional_email'] ?? '') ?>" disabled></div>
-                    <div class="col-12"><label class="form-label">Adresse 1</label><input class="form-control" name="address_line1" value="<?= e($user['address_line1'] ?? '') ?>"></div>
-                    <div class="col-12"><label class="form-label">Adresse 2</label><input class="form-control" name="address_line2" value="<?= e($user['address_line2'] ?? '') ?>"></div>
-                    <div class="col-md-4"><label class="form-label">CP</label><input class="form-control" name="postal_code" value="<?= e($user['postal_code'] ?? '') ?>"></div>
-                    <div class="col-md-4"><label class="form-label">Ville</label><input class="form-control" name="city" value="<?= e($user['city'] ?? '') ?>"></div>
-                    <div class="col-md-4"><label class="form-label">Tél.</label><input class="form-control" name="phone" value="<?= e($user['phone'] ?? '') ?>"></div>
+                    <div class="col-12"><label class="form-label">Tél.</label><input class="form-control" type="tel" name="phone" value="<?= e($user['phone'] ?? '') ?>"></div>
                 </div>
                 <button class="btn btn-danger mt-3" type="submit">Enregistrer</button>
             </form>
@@ -182,14 +167,10 @@ sodium_render_header('Profil');
 
     <div class="col-xl-8">
         <div class="form-card">
-            <form method="post" class="d-flex align-items-center justify-content-between gap-3">
+            <form method="post">
                 <input type="hidden" name="action" value="theme">
-                <input type="hidden" name="theme" value="light">
-                <div><h2 class="h5 mb-1">Thème</h2><div class="small text-muted">Adapter l’interface à votre préférence d’affichage.</div></div>
-                <div class="form-check form-switch m-0">
-                    <input class="form-check-input profile-theme-switch" type="checkbox" role="switch" id="profileTheme" name="theme" value="dark" <?= ($user['theme'] ?? 'light') === 'dark' ? 'checked' : '' ?> onchange="this.form.submit()">
-                    <label class="form-check-label ms-2" for="profileTheme">Mode sombre</label>
-                </div>
+                <div class="mb-3"><h2 class="h5 mb-1">Thème</h2><div class="small text-muted">Choisissez l’ambiance de votre espace Sodium.</div></div>
+                <div class="theme-choice-grid"><?php foreach(['light'=>['Sodium Light','Interface claire Sodium'],'dark'=>['Sodium Dark','Interface sombre Sodium'],'outlook'=>['Sodium Outlook','Bleu, précis et compact'],'roundcube'=>['Roundcube','Classique, gris et structuré']] as $themeValue=>$themeMeta): ?><label class="theme-choice theme-preview-<?=e($themeValue)?>"><input type="radio" name="theme" value="<?=e($themeValue)?>" <?=($user['theme']??'light')===$themeValue?'checked':''?> onchange="this.form.submit()"><span class="theme-choice-preview"><i></i><b></b><em></em></span><span class="theme-choice-copy"><strong><?=e($themeMeta[0])?></strong><small><?=e($themeMeta[1])?></small></span><i class="bi bi-check-circle-fill theme-choice-check"></i></label><?php endforeach; ?></div>
             </form>
         </div>
     </div>

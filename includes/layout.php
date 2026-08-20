@@ -21,9 +21,14 @@ function sodium_render_header(string $title): void
     global $pdo, $sodiumDefaultBrowserTitle;
     $user = current_user();
     $instanceSettings=sodium_instance_settings();$instanceName=trim((string)$instanceSettings['instance_name'])?:'Sodium';
+    $remoteDependencies=(string)($instanceSettings['dependency_source']??'local')==='remote';
+    $bootstrapCss=$remoteDependencies?'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/css/bootstrap.min.css':'/assets/vendor/bootstrap/bootstrap.min.css';
+    $bootstrapIconsCss=$remoteDependencies?'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css':'/assets/vendor/bootstrap-icons/bootstrap-icons.css';
+    $bootstrapJs=$remoteDependencies?'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js':'/assets/vendor/bootstrap/bootstrap.bundle.min.js';
     $appLicense = sodium_license_public_info();
     $licenseValid = !empty($appLicense['is_valid']);
-    $theme = $user['theme'] ?? 'light';
+    $theme = in_array(($user['theme'] ?? 'light'), ['light','dark','outlook','roundcube'], true) ? (string)$user['theme'] : 'light';
+    $bootstrapTheme = $theme === 'dark' ? 'dark' : 'light';
     $activeMailAccount = $licenseValid ? sodium_active_mail_account() : null;
     if ($activeMailAccount && !empty($activeMailAccount['password_cipher'])) {
         $activeMailAccount = sodium_refresh_account_cache((int) $activeMailAccount['id']);
@@ -57,15 +62,15 @@ function sodium_render_header(string $title): void
         : $defaultBrowserTitle;
     ?>
     <!doctype html>
-    <html lang="<?= e(sodium_locale()) ?>" data-bs-theme="<?= e($theme) ?>">
+    <html lang="<?= e(sodium_locale()) ?>" data-bs-theme="<?= e($bootstrapTheme) ?>" data-sodium-theme="<?= e($theme) ?>">
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="<?= e(sodium_csrf_token()) ?>">
         <title><?= e($browserTitle) ?></title>
-        <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-        <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-        <link href="/css/app.css?v=20260820-02" rel="stylesheet">
+        <link href="<?=e($bootstrapCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap/bootstrap.min.css\'"':''?>>
+        <link href="<?=e($bootstrapIconsCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap-icons/bootstrap-icons.css\'"':''?>>
+        <link href="/css/app.css?v=20260820-03" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
         <meta name="mobile-web-app-capable" content="yes">
@@ -196,7 +201,7 @@ function sodium_render_header(string $title): void
             <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
                 <div class="modal-header"><div><div class="text-danger small fw-semibold text-uppercase">À propos</div><h2 class="modal-title h4 mb-0" id="aboutModalLabel">Sodium</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 1.0.0</span></div>
+                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 1.2.0</span></div>
                     <h3 class="h6">Édition et réalisation</h3><p><strong>Sodium Webmail</strong> est un logiciel SaaS conçu, édité et maintenu par <strong>Jessy System</strong>. Il centralise l’accès aux comptes de messagerie attribués aux utilisateurs autorisés dans un environnement professionnel privé.</p>
                     <h3 class="h6">Licence d’exploitation</h3><p>Cette instance est mise à disposition dans le cadre d’une licence d’exploitation SaaS <code><?=e($appLicense['license_type']??'non enregistrée')?></code> concédée à <code><?=e($appLicense['rights_holder']??'ayant droit non enregistré')?></code><?php if(!empty($appLicense['registered_at'])): ?>, enregistrée le <code><?=e(sodium_format_date($appLicense['registered_at'],'d/m/Y','date inconnue'))?></code><?php endif; ?><?php if(!empty($appLicense['expires_at'])&&$appLicense['expires_at']<'9999-01-01'): ?> et valable jusqu’au <code><?=e(sodium_format_date($appLicense['expires_at'],'d/m/Y','date inconnue'))?></code><?php elseif(!empty($appLicense['expires_at'])): ?>, pour une durée <code>perpétuelle</code><?php endif; ?>. Elle confère un droit personnel d’accès et d’utilisation du service sur le domaine autorisé, dans les limites fonctionnelles, techniques et contractuelles convenues. Elle n’emporte aucune cession des droits de propriété intellectuelle sur le logiciel.</p>
                     <h3 class="h6">Propriété intellectuelle et étendue des droits</h3><p>L’architecture, le code, l’interface, les développements, les textes, les éléments graphiques, les bases de données et les composants de Sodium demeurent protégés. Sauf autorisation écrite ou exception prévue par la loi, sont interdits la reproduction, la mise à disposition de tiers, la sous-licence, la commercialisation, l’extraction substantielle, l’adaptation ou le contournement des dispositifs techniques de licence. Les droits strictement nécessaires à l’utilisation conforme du logiciel par l’ayant droit demeurent réservés conformément aux dispositions légales applicables.</p>
@@ -209,7 +214,7 @@ function sodium_render_header(string $title): void
                     <h3 class="h6">Protection des données</h3><p>L’ayant droit demeure responsable de la détermination des finalités et des habilitations associées aux traitements réalisés au moyen de Sodium. Les mesures de sécurité, de confidentialité, de sauvegarde et de gestion des incidents doivent être organisées conformément aux rôles effectifs des parties et à la réglementation applicable. Les présentes informations ne remplacent pas un contrat de licence, un accord de niveau de service ou un accord de traitement des données lorsqu’un tel document est requis.</p>
                     <div class="border rounded p-3 bg-body-tertiary"><strong>Copyright © 2026 Jessy System — Tous droits réservés.</strong><br><span class="text-muted">Produit : <code><?=e($appLicense['product_name']??'Sodium Webmail')?></code> · Domaine autorisé : <code><?=e($appLicense['allowed_domain']??'non enregistré')?></code> · Statut : <code><?=e(!empty($appLicense['is_valid'])?'licence active':'activation requise')?></code>.</span></div>
                 </div>
-                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 1.0.0</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 1.2.0</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
         </div>
 
@@ -347,7 +352,7 @@ function sodium_render_footer(): void
             </div></div>
         </div>
         <?php endif; ?>
-        <script src="/assets/vendor/bootstrap/bootstrap.bundle.min.js"></script>
+        <script src="<?=e($bootstrapJs)?>" <?=$remoteDependencies?'onerror="this.onerror=null;this.src=\'/assets/vendor/bootstrap/bootstrap.bundle.min.js\'"':''?>></script>
         <script src="/js/i18n.js?v=20260819-01"></script>
         <script>
             (() => {

@@ -2,6 +2,27 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [1.2.0] — 2026-08-20
+
+### Personnalisation
+
+- ajout de quatre thèmes utilisateur sélectionnables sous forme de cartes : Sodium Light, Sodium Dark, Sodium Outlook et Roundcube ;
+- création de deux habillages complets inspirés des interfaces Outlook et Roundcube, appliqués à la navigation, aux contenus, aux cartes et aux actions ;
+- choix des quatre thèmes disponible dès l’installation pour le compte administrateur ;
+- simplification du profil de l’édition générique aux informations utiles : nom, prénom, adresses mails personnelle et professionnelle, et téléphone.
+
+### Administration et dépendances
+
+- ajout du choix entre les dépendances locales et le CDN jsDelivr dans les paramètres généraux ;
+- fichiers locaux recommandés et utilisés par défaut, avec explication des impacts de disponibilité, bande passante et confidentialité ;
+- repli automatique vers les fichiers locaux lorsque le CDN distant est indisponible ;
+- mise à jour réelle des ressources embarquées vers Bootstrap 5.3.8 et Bootstrap Icons 1.13.1.
+
+### Corrections
+
+- stabilisation de la poignée de déplacement des messages et affichage de la ligne complète pendant le glisser-déposer ;
+- renouvellement du cache PWA pour distribuer immédiatement les styles et dépendances de cette version.
+
 ## [1.0.0] — 2026-08-20
 
 ### Améliorations
