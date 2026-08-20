@@ -10,7 +10,7 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 - retrait direct d’un tag depuis son badge dans l’en-tête de lecture d’un message ;
 - ajout d’un menu contextuel au clic droit avec les actions de réponse, transfert, classement, état de lecture, déplacement et ajout de tag ;
 - déplacement d’un message vers un dossier du compte par glisser-déposer dans le menu latéral.
-- ajout d’une poignée dédiée à six points avant la case à cocher ; seul ce repère déclenche désormais le déplacement.
+- ajout d’une poignée dédiée à six points avant la case à cocher ; seul ce repère déclenche le déplacement, avec aperçu complet de la ligne sous le curseur.
 
 ### Ergonomie
 

@@ -946,6 +946,7 @@ function sodium_render_footer(): void
                 };
                 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => bootstrap.Tooltip.getOrCreateInstance(element));
                 let draggedMessageRow=null;
+                let draggedMessagePreview=null;
                 const messagePointerActionsEnabled=()=>!window.matchMedia('(max-width: 767.98px)').matches;
                 const submitRowAction=(row,action,extraFields={})=>{
                     const selection=row?.querySelector('.message-checkbox')?.value||'';
@@ -976,9 +977,16 @@ function sodium_render_footer(): void
                         if(!event.target.closest('.message-drag-handle')){event.preventDefault();return;}
                         const selection=row.querySelector('.message-checkbox')?.value||'';if(!selection){event.preventDefault();return;}
                         draggedMessageRow=row;row.classList.add('is-dragging');
+                        draggedMessagePreview?.remove();
+                        const rowRect=row.getBoundingClientRect();
+                        draggedMessagePreview=row.cloneNode(true);
+                        draggedMessagePreview.classList.remove('is-dragging');
+                        Object.assign(draggedMessagePreview.style,{position:'fixed',left:'-10000px',top:'-10000px',width:Math.min(rowRect.width,760)+'px',minHeight:rowRect.height+'px',background:getComputedStyle(row).backgroundColor,boxShadow:'0 12px 30px rgba(0,0,0,.28)',opacity:'.96',pointerEvents:'none',zIndex:'-1'});
+                        document.body.appendChild(draggedMessagePreview);
                         event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('application/x-sodium-message',selection);event.dataTransfer.setData('text/plain','Déplacer ce message');
+                        event.dataTransfer.setDragImage(draggedMessagePreview,24,Math.min(24,rowRect.height/2));
                     });
-                    row.addEventListener('dragend',()=>{row.classList.remove('is-dragging');row.dataset.dragEndedAt=String(Date.now());draggedMessageRow=null;document.querySelectorAll('.folder-drop-target').forEach(target=>target.classList.remove('folder-drop-target'));});
+                    row.addEventListener('dragend',()=>{row.classList.remove('is-dragging');row.dataset.dragEndedAt=String(Date.now());draggedMessageRow=null;draggedMessagePreview?.remove();draggedMessagePreview=null;document.querySelectorAll('.folder-drop-target').forEach(target=>target.classList.remove('folder-drop-target'));});
                     row.querySelector('[data-read-toggle]')?.addEventListener('click', async event => {
                         event.stopPropagation();
                         const dot = event.currentTarget;
