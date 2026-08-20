@@ -11,7 +11,7 @@ if (!$account) {
 $folderKey = (string) ($_GET['folder'] ?? 'INBOX');
 $statusFilter = in_array($_GET['status'] ?? '', ['read', 'unread'], true) ? $_GET['status'] : 'all';
 $tagFilter=preg_match('/^[a-f0-9]{32}$/',(string)($_GET['tag']??''))?(string)$_GET['tag']:'';
-if($tagFilter===''&&(int)($_GET['tag_id']??0)>0){$legacyTag=$pdo->prepare('SELECT shared_key FROM sodium_tags WHERE id=? AND mail_account_id=?');$legacyTag->execute([(int)$_GET['tag_id'],(int)$account['id']]);$tagFilter=(string)($legacyTag->fetchColumn()?:'');}
+if($tagFilter===''&&(int)($_GET['tag_id']??0)>0){$legacyTag=$pdo->prepare('SELECT t.shared_key FROM sodium_tags t INNER JOIN sodium_tag_accounts ta ON ta.tag_id=t.id WHERE t.id=? AND ta.mail_account_id=?');$legacyTag->execute([(int)$_GET['tag_id'],(int)$account['id']]);$tagFilter=(string)($legacyTag->fetchColumn()?:'');}
 $searchQuery=mb_substr(trim((string)($_GET['q']??'')),0,120);
 $allowedSearchScopes=['correspondents','subject','body','all'];
 $searchScope=in_array((string)($_GET['scope']??'all'),$allowedSearchScopes,true)?(string)($_GET['scope']??'all'):'all';
@@ -43,7 +43,7 @@ foreach($messages as &$message){$message['metadata']=$metadata[(int)$account['id
 unset($message);
 if($tagFilter!=='')$messages=array_values(array_filter($messages,static fn(array $message):bool=>in_array($tagFilter,array_column($message['metadata']['tags']??[],'shared_key'),true)));
 $tagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(created_by=? OR is_shared=1)';
-$tagStmt=$pdo->prepare('SELECT * FROM sodium_tags WHERE mail_account_id=? AND '.$tagVisibility.' ORDER BY name');
+$tagStmt=$pdo->prepare('SELECT t.* FROM sodium_tags t INNER JOIN sodium_tag_accounts ta ON ta.tag_id=t.id WHERE ta.mail_account_id=? AND '.$tagVisibility.' ORDER BY t.name');
 $tagParams=[(int)$account['id']];if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)current_user()['id'];
 $tagStmt->execute($tagParams);$availableTags=$tagStmt->fetchAll();
 

@@ -264,7 +264,7 @@ function sodium_render_footer(): void
         }
         $readerAccountIds=array_map('intval',array_column($accounts,'id'));
         $readerTagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(created_by=? OR is_shared=1)';
-        $readerTagStmt=$pdo->prepare('SELECT id,mail_account_id,name,color FROM sodium_tags WHERE mail_account_id IN ('.implode(',',array_fill(0,count($readerAccountIds),'?')).') AND '.$readerTagVisibility.' ORDER BY name');
+        $readerTagStmt=$pdo->prepare('SELECT t.id,ta.mail_account_id,t.name,t.color FROM sodium_tags t INNER JOIN sodium_tag_accounts ta ON ta.tag_id=t.id WHERE ta.mail_account_id IN ('.implode(',',array_fill(0,count($readerAccountIds),'?')).') AND '.$readerTagVisibility.' ORDER BY t.name');
         $readerTagParams=$readerAccountIds;if(!sodium_can_manage_all('sodium_labels'))$readerTagParams[]=(int)($user['id']??0);
         $readerTagStmt->execute($readerTagParams);
         foreach($readerTagStmt->fetchAll() as $readerTag)$readerTags[(int)$readerTag['mail_account_id']][]=['id'=>(int)$readerTag['id'],'name'=>(string)$readerTag['name'],'color'=>(string)$readerTag['color']];
@@ -946,6 +946,7 @@ function sodium_render_footer(): void
                 };
                 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => bootstrap.Tooltip.getOrCreateInstance(element));
                 let draggedMessageRow=null;
+                const messagePointerActionsEnabled=()=>!window.matchMedia('(max-width: 767.98px)').matches;
                 const submitRowAction=(row,action,extraFields={})=>{
                     const selection=row?.querySelector('.message-checkbox')?.value||'';
                     if(!selection)return;
@@ -957,15 +958,16 @@ function sodium_render_footer(): void
                 const bindMessageRow = row => {
                     if(row.dataset.messageBound==='1')return;
                     row.dataset.messageBound='1';
-                    row.draggable=true;
+                    row.draggable=messagePointerActionsEnabled();
                     row.querySelector('[data-open-message]')?.addEventListener('click', event => { event.stopPropagation(); openMessage(row); });
                     row.addEventListener('click', event => {
                         if(Number(row.dataset.dragEndedAt||0)>Date.now()-300)return;
                         if (event.target.closest('input,button,a,select,time')) return;
                         openMessage(row);
                     });
-                    row.addEventListener('contextmenu',event=>{event.preventDefault();openMessageContextMenu(event,row);});
+                    row.addEventListener('contextmenu',event=>{if(!messagePointerActionsEnabled())return;event.preventDefault();openMessageContextMenu(event,row);});
                     row.addEventListener('dragstart',event=>{
+                        if(!messagePointerActionsEnabled()){event.preventDefault();return;}
                         if(event.target.closest('input,button,a,select')){event.preventDefault();return;}
                         const selection=row.querySelector('.message-checkbox')?.value||'';if(!selection){event.preventDefault();return;}
                         draggedMessageRow=row;row.classList.add('is-dragging');

@@ -16,7 +16,7 @@ if(!$account||!preg_match('/^[a-f0-9]{64}$/',$messageKey)||!$tagId){
     http_response_code(404);echo json_encode(['ok'=>false,'error'=>'Message ou tag introuvable.']);exit;
 }
 $visibility=sodium_can_manage_all('sodium_labels')?'1=1':'(created_by=? OR is_shared=1)';
-$stmt=$pdo->prepare('SELECT id FROM sodium_tags WHERE id=? AND mail_account_id=? AND '.$visibility);
+$stmt=$pdo->prepare('SELECT t.id FROM sodium_tags t INNER JOIN sodium_tag_accounts ta ON ta.tag_id=t.id WHERE t.id=? AND ta.mail_account_id=? AND '.$visibility);
 $params=[$tagId,$accountId];if(!sodium_can_manage_all('sodium_labels'))$params[]=(int)current_user()['id'];
 $stmt->execute($params);
 if(!$stmt->fetchColumn()){

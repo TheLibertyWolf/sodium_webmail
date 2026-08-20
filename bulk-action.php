@@ -37,7 +37,7 @@ try {
             $tagSharedKey=preg_match('/^[a-f0-9]{32}$/',(string)($_POST['tag_shared_key']??''))?(string)$_POST['tag_shared_key']:'';
             $tagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(created_by=? OR is_shared=1)';
             $tagLookup=$tagSharedKey!==''?'shared_key=?':'id=?';
-            $tagStmt=$pdo->prepare('SELECT id FROM sodium_tags WHERE '.$tagLookup.' AND mail_account_id=? AND '.$tagVisibility.' LIMIT 1');
+            $tagStmt=$pdo->prepare('SELECT t.id FROM sodium_tags t INNER JOIN sodium_tag_accounts ta ON ta.tag_id=t.id WHERE t.'.$tagLookup.' AND ta.mail_account_id=? AND '.$tagVisibility.' LIMIT 1');
             $tagParams=[$tagSharedKey!==''?$tagSharedKey:$tagId,$accountId];if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)current_user()['id'];
             $tagStmt->execute($tagParams);
             $tagId=(int)$tagStmt->fetchColumn();

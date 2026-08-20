@@ -49,7 +49,7 @@ $unifiedUrl=static function(array $overrides=[])use($statusFilter,$tagFilter,$me
 };
 $availableTags=[];
 $accountIds=array_map('intval',array_column($accounts,'id'));
-if($accountIds){$tagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(tt.created_by=? OR tt.is_shared=1)';$stmt=$pdo->prepare('SELECT tt.shared_key,tt.name,tt.color,tt.created_by,tt.is_shared FROM sodium_tag_templates tt INNER JOIN sodium_tags t ON t.shared_key=tt.shared_key WHERE t.mail_account_id IN ('.implode(',',array_fill(0,count($accountIds),'?')).') AND '.$tagVisibility.' GROUP BY tt.shared_key,tt.name,tt.color,tt.created_by,tt.is_shared ORDER BY tt.name');$tagParams=$accountIds;if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)current_user()['id'];$stmt->execute($tagParams);$availableTags=$stmt->fetchAll();}
+if($accountIds){$tagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(t.created_by=? OR t.is_shared=1)';$stmt=$pdo->prepare('SELECT DISTINCT t.id,t.shared_key,t.name,t.color,t.created_by,t.is_shared FROM sodium_tags t INNER JOIN sodium_tag_accounts ta ON ta.tag_id=t.id WHERE ta.mail_account_id IN ('.implode(',',array_fill(0,count($accountIds),'?')).') AND '.$tagVisibility.' ORDER BY t.name');$tagParams=$accountIds;if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)current_user()['id'];$stmt->execute($tagParams);$availableTags=$stmt->fetchAll();}
 sodium_render_header('Boîte de réception unifiée');
 ?>
 <div class="mail-page-shell">

@@ -130,10 +130,13 @@ function sodium_ensure_schema(): void
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_tags (
         id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
-        mail_account_id INT UNSIGNED NOT NULL,
+        mail_account_id INT UNSIGNED NULL,
         name VARCHAR(80) NOT NULL,
         color VARCHAR(20) NOT NULL DEFAULT '#6c757d',
         created_by INT NULL,
+        shared_key CHAR(32) NOT NULL DEFAULT '',
+        applies_all TINYINT(1) NOT NULL DEFAULT 0,
+        is_shared TINYINT(1) NOT NULL DEFAULT 1,
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         UNIQUE KEY uniq_sodium_tag_account_name (mail_account_id, name),
         INDEX idx_sodium_tags_account (mail_account_id)
@@ -141,20 +144,18 @@ function sodium_ensure_schema(): void
     sodium_ensure_column('sodium_tags', 'shared_key', "CHAR(32) NOT NULL DEFAULT ''");
     sodium_ensure_column('sodium_tags', 'applies_all', 'TINYINT(1) NOT NULL DEFAULT 0');
     sodium_ensure_column('sodium_tags', 'is_shared', 'TINYINT(1) NOT NULL DEFAULT 1');
+    $tagAccountNullable=$pdo->query("SELECT IS_NULLABLE FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sodium_tags' AND COLUMN_NAME='mail_account_id'")->fetchColumn();
+    if($tagAccountNullable!=='YES')$pdo->exec("ALTER TABLE sodium_tags MODIFY mail_account_id INT UNSIGNED NULL");
 
-    $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_tag_templates (
-        shared_key CHAR(32) PRIMARY KEY,
-        name VARCHAR(80) NOT NULL,
-        color VARCHAR(20) NOT NULL DEFAULT '#6c757d',
-        applies_all TINYINT(1) NOT NULL DEFAULT 0,
-        created_by INT NULL,
-        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-        updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
-    sodium_ensure_column('sodium_tag_templates', 'is_shared', 'TINYINT(1) NOT NULL DEFAULT 1');
     $pdo->exec("UPDATE sodium_tags SET shared_key=MD5(CONCAT('legacy|',id,'|',created_at)) WHERE shared_key=''");
-    $pdo->exec("INSERT IGNORE INTO sodium_tag_templates (shared_key,name,color,applies_all,created_by,created_at)
-        SELECT shared_key,name,color,applies_all,created_by,created_at FROM sodium_tags WHERE shared_key<>''");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_tag_accounts (
+        tag_id INT UNSIGNED NOT NULL,
+        mail_account_id INT UNSIGNED NOT NULL,
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (tag_id,mail_account_id),
+        INDEX idx_sodium_tag_accounts_account (mail_account_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_message_tags (
         mail_account_id INT UNSIGNED NOT NULL,
@@ -165,6 +166,32 @@ function sodium_ensure_schema(): void
         PRIMARY KEY (mail_account_id, message_key, tag_id),
         INDEX idx_sodium_message_tags_tag (tag_id)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    // Un tag est un objet global unique ; sa portée par compte est stockée séparément.
+    if((int)$pdo->query("SELECT COUNT(*) FROM sodium_tags WHERE mail_account_id IS NOT NULL")->fetchColumn()>0){
+        $pdo->exec("INSERT IGNORE INTO sodium_tag_accounts (tag_id,mail_account_id)
+        SELECT canonical.tag_id,t.mail_account_id
+        FROM sodium_tags t
+        INNER JOIN (SELECT LOWER(name) name_key,MIN(id) tag_id FROM sodium_tags GROUP BY LOWER(name)) canonical ON canonical.name_key=LOWER(t.name)
+        WHERE t.mail_account_id IS NOT NULL");
+        $pdo->exec("INSERT IGNORE INTO sodium_message_tags (mail_account_id,message_key,tag_id,tagged_by,tagged_at)
+        SELECT mt.mail_account_id,mt.message_key,canonical.tag_id,mt.tagged_by,mt.tagged_at
+        FROM sodium_message_tags mt
+        INNER JOIN sodium_tags t ON t.id=mt.tag_id
+        INNER JOIN (SELECT LOWER(name) name_key,MIN(id) tag_id FROM sodium_tags GROUP BY LOWER(name)) canonical ON canonical.name_key=LOWER(t.name)");
+        $pdo->exec("DELETE mt FROM sodium_message_tags mt
+        INNER JOIN sodium_tags t ON t.id=mt.tag_id
+        INNER JOIN (SELECT LOWER(name) name_key,MIN(id) tag_id FROM sodium_tags GROUP BY LOWER(name)) canonical ON canonical.name_key=LOWER(t.name)
+        WHERE mt.tag_id<>canonical.tag_id");
+        $pdo->exec("DELETE t FROM sodium_tags t
+        INNER JOIN (SELECT LOWER(name) name_key,MIN(id) tag_id FROM sodium_tags GROUP BY LOWER(name)) canonical ON canonical.name_key=LOWER(t.name)
+        WHERE t.id<>canonical.tag_id");
+        $pdo->exec("UPDATE sodium_tags SET mail_account_id=NULL WHERE mail_account_id IS NOT NULL");
+    }
+    $globalTagNameIndex=$pdo->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.STATISTICS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sodium_tags' AND INDEX_NAME='uniq_sodium_tag_name'")->fetchColumn();
+    if(!(int)$globalTagNameIndex)$pdo->exec("ALTER TABLE sodium_tags ADD UNIQUE KEY uniq_sodium_tag_name (name)");
+    $legacyTagTemplates=$pdo->query("SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sodium_tag_templates'")->fetchColumn();
+    if((int)$legacyTagTemplates)$pdo->exec("DROP TABLE sodium_tag_templates");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_message_replies (
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
@@ -1650,7 +1677,7 @@ function sodium_apply_global_tags_to_account(int $accountId): void
 {
     global $pdo;
     sodium_ensure_schema();
-    $stmt=$pdo->prepare("INSERT IGNORE INTO sodium_tags (mail_account_id,name,color,created_by,shared_key,applies_all,is_shared)
-        SELECT ?,name,color,created_by,shared_key,1,is_shared FROM sodium_tag_templates WHERE applies_all=1");
+    $stmt=$pdo->prepare("INSERT IGNORE INTO sodium_tag_accounts (tag_id,mail_account_id)
+        SELECT id,? FROM sodium_tags WHERE applies_all=1");
     $stmt->execute([$accountId]);
 }
