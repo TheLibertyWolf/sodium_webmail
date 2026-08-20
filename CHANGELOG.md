@@ -31,6 +31,7 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 ### Corrections
 
 - rétablissement des marges de la carte affichant l’historique des réponses dans la fenêtre de lecture d’un message.
+- ajout des libellés « De » et « À » dans l’en-tête de lecture, avec copie individuelle des adresses des destinataires.
 
 ## [1.2.0] — 2026-08-20
 
