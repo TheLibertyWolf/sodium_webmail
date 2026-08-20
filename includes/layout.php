@@ -958,7 +958,12 @@ function sodium_render_footer(): void
                 const bindMessageRow = row => {
                     if(row.dataset.messageBound==='1')return;
                     row.dataset.messageBound='1';
-                    row.draggable=messagePointerActionsEnabled();
+                    row.draggable=false;
+                    const dragHandle=row.querySelector('.message-drag-handle');
+                    if(dragHandle){
+                        dragHandle.draggable=messagePointerActionsEnabled();
+                        dragHandle.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();});
+                    }
                     row.querySelector('[data-open-message]')?.addEventListener('click', event => { event.stopPropagation(); openMessage(row); });
                     row.addEventListener('click', event => {
                         if(Number(row.dataset.dragEndedAt||0)>Date.now()-300)return;
