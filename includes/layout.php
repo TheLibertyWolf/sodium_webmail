@@ -92,7 +92,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="<?=e($bootstrapCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap/bootstrap.min.css\'"':''?>>
         <link href="<?=e($bootstrapIconsCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap-icons/bootstrap-icons.css\'"':''?>>
-        <link href="/css/app.css?v=20260820-04" rel="stylesheet">
+        <link href="/css/app.css?v=20260820-05" rel="stylesheet">
         <link href="/css/themes.css?v=20260820-02" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">

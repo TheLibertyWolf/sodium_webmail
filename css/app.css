@@ -1677,6 +1677,14 @@ body {
     color-scheme: light;
 }
 
+#readerReplies {
+    margin: 0 1.25rem 1rem !important;
+}
+
+#readerReplies > .card:last-child {
+    margin-bottom: 0 !important;
+}
+
 .reader-reply-frame {
     display: block;
     width: 100%;

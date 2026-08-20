@@ -28,6 +28,10 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 - ajout dans la gestion de licence d’une mention relative à la protection de Sodium par le droit d’auteur et la propriété intellectuelle, ainsi qu’au constat probatoire dressé par commissaire de justice lors de la mise en ligne de la version 1.0.
 
+### Corrections
+
+- rétablissement des marges de la carte affichant l’historique des réponses dans la fenêtre de lecture d’un message.
+
 ## [1.2.0] — 2026-08-20
 
 ### Personnalisation
