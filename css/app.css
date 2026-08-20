@@ -782,7 +782,7 @@ body {
     min-height: 48px;
     padding: 7px 10px;
     display: grid;
-    grid-template-columns: 58px minmax(180px, 24%) minmax(0, 1fr) max-content;
+    grid-template-columns: 78px minmax(180px, 24%) minmax(0, 1fr) max-content;
     align-items: center;
     gap: 10px;
     border-bottom: 1px solid var(--bs-border-color);
@@ -790,13 +790,44 @@ body {
 }
 
 .message-row.unified {
-    grid-template-columns: 58px 140px minmax(180px, 22%) minmax(0, 1fr) max-content;
+    grid-template-columns: 78px 140px minmax(180px, 22%) minmax(0, 1fr) max-content;
 }
 
 .message-select-tools {
     display: inline-flex;
     align-items: center;
-    gap: .55rem;
+    gap: .45rem;
+}
+
+.message-drag-handle {
+    width: 14px;
+    height: 24px;
+    flex: 0 0 14px;
+    position: relative;
+    cursor: grab;
+    border-radius: 5px;
+}
+
+.message-drag-handle::before {
+    content: '';
+    position: absolute;
+    inset: 4px 2px;
+    background-image: radial-gradient(circle, var(--bs-secondary-color) 1.6px, transparent 1.8px);
+    background-size: 6px 6px;
+    opacity: .72;
+    filter: drop-shadow(0 1px 0 rgba(255,255,255,.18));
+}
+
+.message-drag-handle:hover::before { opacity: 1; }
+.message-row.is-dragging .message-drag-handle { cursor: grabbing; }
+
+@media (max-width: 767.98px) {
+    .message-drag-handle { display: none; }
+}
+
+@media (min-width: 768px) and (max-width: 900px) {
+    .message-row { grid-template-columns: 74px minmax(0, 1fr) auto; }
+    .message-row.unified { grid-template-columns: 74px 40px minmax(0, 1fr) auto; }
 }
 
 .message-star {

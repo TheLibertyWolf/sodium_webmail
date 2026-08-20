@@ -97,7 +97,7 @@ $showTwofa = !empty($_SESSION['sodium_pending_2fa_user_id']);
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title><?= e(sodium_t('auth.login.title')) ?> - <?= e(SODIUM_APP_NAME) ?></title>
     <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
-    <link href="/css/app.css?v=20260729-01" rel="stylesheet">
+    <link href="/css/app.css?v=20260820-02" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="shortcut icon" href="/assets/icons/favicon-64.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-180.png">

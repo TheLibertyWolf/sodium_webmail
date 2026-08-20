@@ -2,11 +2,15 @@
 
 Sodium est un webmail professionnel multi-utilisateurs et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
 
-[![Version](https://img.shields.io/badge/version-0.11.0-2271b1)](https://github.com/TheLibertyWolf/sodium_webmail/releases)
+[![Version](https://img.shields.io/badge/version-1.0.0-2271b1)](https://github.com/TheLibertyWolf/sodium_webmail/releases)
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D%208.2-777bb4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-%3E%3D%208.0-4479a1)](https://www.mysql.com/)
 [![License](https://img.shields.io/badge/license-propri%C3%A9taire-46b450)](LICENSE.md)
 [![Languages](https://img.shields.io/badge/languages-FR%20%7C%20EN%20%7C%20DE%20%7C%20IT%20%7C%20ES%20%7C%20PT-f48120)](#langues)
+
+<sub>🇫🇷 Français · 🇬🇧 English · 🇩🇪 Deutsch · 🇮🇹 Italiano · 🇪🇸 Español · 🇵🇹 Português</sub>
+
+> **Sodium Webmail 1.0.0** — première version stable, officiellement disponible.
 
 ## Aperçu
 
