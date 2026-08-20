@@ -65,7 +65,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="/assets/vendor/bootstrap/bootstrap.min.css" rel="stylesheet">
         <link href="/assets/vendor/bootstrap-icons/bootstrap-icons.css" rel="stylesheet">
-        <link href="/css/app.css?v=20260818-03" rel="stylesheet">
+        <link href="/css/app.css?v=20260820-01" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
         <meta name="mobile-web-app-capable" content="yes">
@@ -133,7 +133,7 @@ function sodium_render_header(string $title): void
                     </div>
                     <nav class="nav flex-column gap-1 folder-nav">
                         <?php foreach ($folders as $folder): ?>
-                            <a class="nav-link <?= sodium_nav_active('/mailbox.php') && $activeFolder === (string) $folder['key'] ? 'active' : '' ?>" href="/mailbox.php?account_id=<?= (int) $activeMailAccount['id'] ?>&amp;folder=<?= rawurlencode((string) $folder['key']) ?>">
+                            <a class="nav-link <?= sodium_nav_active('/mailbox.php') && $activeFolder === (string) $folder['key'] ? 'active' : '' ?>" href="/mailbox.php?account_id=<?= (int) $activeMailAccount['id'] ?>&amp;folder=<?= rawurlencode((string) $folder['key']) ?>" data-mail-folder-drop data-account="<?= (int)$activeMailAccount['id'] ?>" data-folder="<?= e($folder['key']) ?>">
                                 <i class="bi bi-<?= e($folder['icon'] ?? 'folder') ?>"></i>
                                 <span class="folder-link-label" title="<?= e($folder['label'] ?? $folder['key']) ?>"><?= e($folder['label'] ?? $folder['key']) ?></span>
                                 <?php $isInboxFolder = strtoupper((string)$folder['key']) === 'INBOX'; ?>
@@ -839,9 +839,22 @@ function sodium_render_footer(): void
                         tags.innerHTML = '';
                         (message.tags || []).forEach(tag => {
                             const badge = document.createElement('span');
-                            badge.className = 'mail-tag';
+                            badge.className = 'mail-tag reader-mail-tag';
+                            badge.dataset.tagId = String(tag.id);
                             badge.style.setProperty('--tag-color', tag.color);
-                            badge.textContent = tag.name;
+                            const label=document.createElement('span');label.textContent=tag.name;
+                            const remove=document.createElement('button');remove.type='button';remove.className='reader-tag-remove';remove.title=`Retirer le tag ${tag.name}`;remove.setAttribute('aria-label',remove.title);remove.innerHTML='<i class="bi bi-x"></i>';
+                            remove.addEventListener('click',async event=>{
+                                event.stopPropagation();remove.disabled=true;
+                                const data=new FormData();data.set('account_id',String(message.account_id));data.set('message_key',String(message.message_key));data.set('tag_id',String(tag.id));
+                                try{
+                                    const response=await fetch('/api/message-tag.php',{method:'POST',body:data,headers:{Accept:'application/json'}});const result=await response.json();if(!response.ok||!result.ok)throw new Error(result.error||'Suppression impossible.');
+                                    badge.remove();readerMessage.tags=(readerMessage.tags||[]).filter(item=>Number(item.id)!==Number(tag.id));
+                                    document.querySelectorAll(`[data-message-row][data-account="${CSS.escape(String(message.account_id))}"][data-folder="${CSS.escape(String(message.folder))}"][data-uid="${CSS.escape(String(message.uid))}"] [data-tag-id="${CSS.escape(String(tag.id))}"]`).forEach(element=>element.remove());
+                                    showClientToast(`Le tag « ${tag.name} » a été retiré du message.`,'success');
+                                }catch(error){remove.disabled=false;showClientToast(error.message||'Suppression du tag impossible.','danger');}
+                            });
+                            badge.append(label,remove);
                             tags.appendChild(badge);
                         });
                         const attachments = document.getElementById('readerAttachments');
@@ -932,14 +945,33 @@ function sodium_render_footer(): void
                     }
                 };
                 document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => bootstrap.Tooltip.getOrCreateInstance(element));
+                let draggedMessageRow=null;
+                const submitRowAction=(row,action,extraFields={})=>{
+                    const selection=row?.querySelector('.message-checkbox')?.value||'';
+                    if(!selection)return;
+                    const form=document.createElement('form');form.method='post';form.action='/bulk-action.php';
+                    const fields={_csrf:csrfToken,bulk_action:action,return_to:location.pathname+location.search,'messages[]':selection,...extraFields};
+                    Object.entries(fields).forEach(([name,value])=>{const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value);form.appendChild(input);});
+                    document.body.appendChild(form);form.submit();
+                };
                 const bindMessageRow = row => {
                     if(row.dataset.messageBound==='1')return;
                     row.dataset.messageBound='1';
+                    row.draggable=true;
                     row.querySelector('[data-open-message]')?.addEventListener('click', event => { event.stopPropagation(); openMessage(row); });
                     row.addEventListener('click', event => {
+                        if(Number(row.dataset.dragEndedAt||0)>Date.now()-300)return;
                         if (event.target.closest('input,button,a,select,time')) return;
                         openMessage(row);
                     });
+                    row.addEventListener('contextmenu',event=>{event.preventDefault();openMessageContextMenu(event,row);});
+                    row.addEventListener('dragstart',event=>{
+                        if(event.target.closest('input,button,a,select')){event.preventDefault();return;}
+                        const selection=row.querySelector('.message-checkbox')?.value||'';if(!selection){event.preventDefault();return;}
+                        draggedMessageRow=row;row.classList.add('is-dragging');
+                        event.dataTransfer.effectAllowed='move';event.dataTransfer.setData('application/x-sodium-message',selection);event.dataTransfer.setData('text/plain','Déplacer ce message');
+                    });
+                    row.addEventListener('dragend',()=>{row.classList.remove('is-dragging');row.dataset.dragEndedAt=String(Date.now());draggedMessageRow=null;document.querySelectorAll('.folder-drop-target').forEach(target=>target.classList.remove('folder-drop-target'));});
                     row.querySelector('[data-read-toggle]')?.addEventListener('click', async event => {
                         event.stopPropagation();
                         const dot = event.currentTarget;
@@ -970,6 +1002,13 @@ function sodium_render_footer(): void
                     });
                 };
                 document.querySelectorAll('[data-message-row]').forEach(bindMessageRow);
+                document.querySelectorAll('[data-mail-folder-drop]').forEach(target=>{
+                    const acceptsDraggedMessage=()=>draggedMessageRow&&target.dataset.account===draggedMessageRow.dataset.account&&target.dataset.folder!==draggedMessageRow.dataset.folder;
+                    target.addEventListener('dragenter',event=>{if(!acceptsDraggedMessage())return;event.preventDefault();target.classList.add('folder-drop-target');});
+                    target.addEventListener('dragover',event=>{if(!acceptsDraggedMessage())return;event.preventDefault();event.dataTransfer.dropEffect='move';target.classList.add('folder-drop-target');});
+                    target.addEventListener('dragleave',event=>{if(!target.contains(event.relatedTarget))target.classList.remove('folder-drop-target');});
+                    target.addEventListener('drop',event=>{if(!acceptsDraggedMessage())return;event.preventDefault();event.stopPropagation();const row=draggedMessageRow;target.classList.remove('folder-drop-target');if(row)submitRowAction(row,'move',{target_folder:target.dataset.folder});});
+                });
                 document.querySelectorAll('[data-deep-search]').forEach(button=>button.addEventListener('click',async()=>{
                     const status=button.parentElement?.querySelector('[data-deep-search-status]');
                     const list=button.closest('.bulk-mail-form')?.querySelector('.message-list');
@@ -1127,6 +1166,50 @@ function sodium_render_footer(): void
                 document.getElementById('readerReply')?.addEventListener('click', () => composeFromReader('reply'));
                 document.getElementById('readerReplyAll')?.addEventListener('click', () => composeFromReader('replyAll'));
                 document.getElementById('readerForward')?.addEventListener('click', () => composeFromReader('forward'));
+
+                let messageContextMenu=null;
+                const closeMessageContextMenu=()=>{messageContextMenu?.remove();messageContextMenu=null;};
+                const contextMenuButton=(icon,label,handler,{disabled=false,tone='',submenu=null}={})=>{
+                    const item=document.createElement('div');item.className='mail-context-item';
+                    const button=document.createElement('button');button.type='button';button.className=`mail-context-action${tone?` text-${tone}`:''}`;button.disabled=disabled;
+                    button.innerHTML=`<i class="bi ${icon}"></i><span>${label}</span>${submenu?'<i class="bi bi-chevron-right ms-auto"></i>':''}`;
+                    if(handler&&!disabled)button.addEventListener('click',event=>{event.stopPropagation();closeMessageContextMenu();handler();});
+                    item.appendChild(button);if(submenu){item.classList.add('has-submenu');item.appendChild(submenu);}return item;
+                };
+                const contextSubmenu=items=>{const submenu=document.createElement('div');submenu.className='mail-context-submenu';items.forEach(item=>submenu.appendChild(item));return submenu;};
+                const openMessageContextMenu=(event,row)=>{
+                    closeMessageContextMenu();
+                    const menu=document.createElement('div');menu.className='mail-context-menu';menu.setAttribute('role','menu');
+                    const compose=async mode=>{await openMessage(row);composeFromReader(mode);};
+                    menu.append(
+                        contextMenuButton('bi-reply','Répondre',()=>compose('reply')),
+                        contextMenuButton('bi-reply-all','Répondre à tous',()=>compose('replyAll'),{disabled:row.dataset.replyAll!=='1'}),
+                        contextMenuButton('bi-forward','Transférer',()=>compose('forward'))
+                    );
+                    const separator=document.createElement('div');separator.className='mail-context-separator';menu.appendChild(separator);
+                    menu.append(
+                        contextMenuButton('bi-archive','Archiver',()=>submitRowAction(row,'archive')),
+                        contextMenuButton('bi-trash','Supprimer',()=>submitRowAction(row,'trash'),{tone:'danger'}),
+                        contextMenuButton('bi-exclamation-octagon','Indésirable',()=>submitRowAction(row,'junk'),{tone:'warning'}),
+                        contextMenuButton(row.classList.contains('unread')?'bi-envelope-open':'bi-envelope','Marquer comme '+(row.classList.contains('unread')?'lu':'non lu'),()=>row.querySelector('[data-read-toggle]')?.click())
+                    );
+                    const folders=(readerFolders[String(row.dataset.account)]||[]).filter(folder=>folder.key!==row.dataset.folder);
+                    const folderItems=folders.map(folder=>contextMenuButton('bi-folder',folder.label,()=>submitRowAction(row,'move',{target_folder:folder.key})));
+                    menu.appendChild(contextMenuButton('bi-folder-symlink','Déplacer vers',null,{disabled:folderItems.length===0,submenu:folderItems.length?contextSubmenu(folderItems):null}));
+                    const presentTagIds=new Set([...row.querySelectorAll('[data-tag-id]')].map(tag=>String(tag.dataset.tagId)));
+                    const tags=(readerTags[String(row.dataset.account)]||[]).filter(tag=>!presentTagIds.has(String(tag.id)));
+                    const tagItems=tags.map(tag=>contextMenuButton('bi-tag',tag.name,()=>submitRowAction(row,'tag',{tag_id:tag.id})));
+                    menu.appendChild(contextMenuButton('bi-tags','Ajouter un tag',null,{disabled:tagItems.length===0,submenu:tagItems.length?contextSubmenu(tagItems):null}));
+                    document.body.appendChild(menu);messageContextMenu=menu;
+                    const margin=8;let left=Math.min(event.clientX,window.innerWidth-menu.offsetWidth-margin);let top=Math.min(event.clientY,window.innerHeight-menu.offsetHeight-margin);
+                    menu.style.left=Math.max(margin,left)+'px';menu.style.top=Math.max(margin,top)+'px';
+                    if(menu.getBoundingClientRect().right+280>window.innerWidth)menu.classList.add('submenus-left');
+                };
+                document.addEventListener('click',event=>{if(messageContextMenu&&!messageContextMenu.contains(event.target))closeMessageContextMenu();});
+                document.addEventListener('keydown',event=>{if(event.key==='Escape')closeMessageContextMenu();});
+                window.addEventListener('blur',closeMessageContextMenu);
+                window.addEventListener('resize',closeMessageContextMenu);
+                window.addEventListener('scroll',closeMessageContextMenu,true);
 
                 const composeElement = document.getElementById('composeModal');
                 const composeLeaveElement = document.getElementById('composeLeaveModal');

@@ -2,6 +2,20 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [Non publié]
+
+### Améliorations
+
+- généralisation des tags dans les vues unifiées : un tag commun à plusieurs comptes n’apparaît plus plusieurs fois dans les filtres et les actions ;
+- retrait direct d’un tag depuis son badge dans l’en-tête de lecture d’un message ;
+- ajout d’un menu contextuel au clic droit avec les actions de réponse, transfert, classement, état de lecture, déplacement et ajout de tag ;
+- déplacement d’un message vers un dossier du compte par glisser-déposer dans le menu latéral.
+
+### Ergonomie
+
+- l’action « Répondre à tous » du menu contextuel est automatiquement désactivée lorsqu’il n’existe pas plusieurs correspondants ;
+- le clic gauche conserve exclusivement son comportement d’ouverture du message.
+
 ## [0.11.0] — 2026-08-19
 
 ### Internationalisation

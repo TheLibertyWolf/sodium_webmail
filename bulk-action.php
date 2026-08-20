@@ -34,11 +34,14 @@ try {
             foreach($folders as $source=>$items)sodium_set_seen($account,$source,array_column($items,'uid'),$action==='read');
         } elseif($action==='tag') {
             $tagId=(int)($_POST['tag_id']??0);
+            $tagSharedKey=preg_match('/^[a-f0-9]{32}$/',(string)($_POST['tag_shared_key']??''))?(string)$_POST['tag_shared_key']:'';
             $tagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(created_by=? OR is_shared=1)';
-            $tagStmt=$pdo->prepare('SELECT COUNT(*) FROM sodium_tags WHERE id=? AND mail_account_id=? AND '.$tagVisibility);
-            $tagParams=[$tagId,$accountId];if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)current_user()['id'];
+            $tagLookup=$tagSharedKey!==''?'shared_key=?':'id=?';
+            $tagStmt=$pdo->prepare('SELECT id FROM sodium_tags WHERE '.$tagLookup.' AND mail_account_id=? AND '.$tagVisibility.' LIMIT 1');
+            $tagParams=[$tagSharedKey!==''?$tagSharedKey:$tagId,$accountId];if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)current_user()['id'];
             $tagStmt->execute($tagParams);
-            if(!(int)$tagStmt->fetchColumn())continue;
+            $tagId=(int)$tagStmt->fetchColumn();
+            if(!$tagId)continue;
             foreach($folders as $items)foreach($items as $item)if(preg_match('/^[a-f0-9]{64}$/',$item['key']))$pdo->prepare('INSERT IGNORE INTO sodium_message_tags (mail_account_id,message_key,tag_id,tagged_by) VALUES (?,?,?,?)')->execute([$accountId,$item['key'],$tagId,(int)current_user()['id']]);
         } else {
             if ($target === '' || strlen($target) > 250 || preg_match('/[\x00-\x1F]/', $target)) throw new RuntimeException('Dossier de destination invalide.');

@@ -804,6 +804,21 @@ function sodium_parse_email_addresses(string $header): array
     return array_values($addresses);
 }
 
+function sodium_message_has_reply_all(array $message, array $account): bool
+{
+    $ownAddress=strtolower(trim((string)($account['email_address']??'')));
+    $participants=[];
+    foreach(array_merge(
+        sodium_parse_email_addresses((string)($message['from_raw']??'')),
+        (array)($message['to_addresses']??[]),
+        (array)($message['cc_addresses']??[])
+    ) as $address){
+        $email=strtolower(trim((string)($address['email']??'')));
+        if($email!==''&&$email!==$ownAddress)$participants[$email]=true;
+    }
+    return count($participants)>1;
+}
+
 function sodium_raw_header_value(string $headers, string $name): string
 {
     if ($headers === '' || !preg_match('/^'.preg_quote($name, '/').':\s*(.+(?:\r?\n[ \t].+)*)/mi', $headers, $match)) return '';
@@ -1124,7 +1139,7 @@ function sodium_message_metadata(array $messages): array
         $keys = array_values(array_unique($keys));
         $placeholders = implode(',', array_fill(0, count($keys), '?'));
         $tagVisibility=sodium_can_manage_all('sodium_labels')?'1=1':'(t.created_by=? OR t.is_shared=1)';
-        $stmt = $pdo->prepare("SELECT mt.message_key,t.id,t.name,t.color FROM sodium_message_tags mt INNER JOIN sodium_tags t ON t.id=mt.tag_id WHERE mt.mail_account_id=? AND mt.message_key IN ($placeholders) AND $tagVisibility");
+        $stmt = $pdo->prepare("SELECT mt.message_key,t.id,t.shared_key,t.name,t.color FROM sodium_message_tags mt INNER JOIN sodium_tags t ON t.id=mt.tag_id WHERE mt.mail_account_id=? AND mt.message_key IN ($placeholders) AND $tagVisibility");
         $tagParams=array_merge([$accountId],$keys);
         if(!sodium_can_manage_all('sodium_labels'))$tagParams[]=(int)(current_user()['id']??0);
         $stmt->execute($tagParams);
