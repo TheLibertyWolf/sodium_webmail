@@ -50,7 +50,7 @@ $bootstrapCss = $remoteDependencies ? 'https://cdn.jsdelivr.net/npm/bootstrap@5.
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Mot de passe perdu - <?= e(SODIUM_APP_NAME) ?></title>
     <link href="<?=e($bootstrapCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap/bootstrap.min.css\'"':''?>>
-    <link href="/css/app.css?v=20260820-03" rel="stylesheet">
+    <link href="/css/app.css?v=20260820-04" rel="stylesheet">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="shortcut icon" href="/assets/icons/favicon-64.png" type="image/png">
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-180.png">

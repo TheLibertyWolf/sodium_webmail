@@ -26,6 +26,7 @@
 /logs/
 /cache/
 /tmp/
+/.sodium-updates/
 
 # Outils de développement
 /.idea/

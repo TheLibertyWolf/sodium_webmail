@@ -1,5 +1,6 @@
 
 RewriteEngine On
+RewriteRule ^\.sodium-updates(?:/|$) - [F,L,NC]
 RewriteCond %{HTTPS} !=on
 RewriteCond %{HTTP:X-Forwarded-Proto} !https [NC]
 RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [R=301,L,NE]

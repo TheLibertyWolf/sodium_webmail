@@ -2,6 +2,32 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [1.3.0] — 2026-08-20
+
+### Interfaces
+
+- reconstruction complète du thème Sodium Outlook : disparition de la barre latérale, barre d’application horizontale, navigation directe entre réception, messages marqués, boîte d’envoi, comptes, dossiers, paramètres et profil ;
+- reconstruction complète du thème Roundcube : rail d’applications indépendant, panneau de comptes et dossiers séparé, listes compactes et navigation mobile inférieure ;
+- adaptation responsive propre à chaque interface, sans réutiliser la disposition latérale standard sur ordinateur.
+
+### Autorisations
+
+- ajout des aptitudes de consultation et de gestion pour les paramètres généraux ;
+- ajout des aptitudes de consultation et de gestion pour les paramètres de sécurité ;
+- ajout d’une aptitude dédiée au contrôle et à l’installation des mises à jour.
+
+### Mise à jour
+
+- détection périodique de la dernière version officielle publiée sur GitHub ;
+- bandeau orange discret réservé aux utilisateurs autorisés lorsqu’une version plus récente est disponible ;
+- card de comparaison entre version installée et version disponible dans les paramètres généraux ;
+- assistant sécurisé acceptant le téléchargement GitHub ou une archive ZIP officielle, avec validation, sauvegarde du code remplacé et migrations SQL transactionnelles ;
+- préservation systématique des configurations, secrets, données téléversées, journaux, caches, dépôt Git et réglages Apache de l’instance.
+
+### Protection juridique
+
+- ajout dans la gestion de licence d’une mention relative à la protection de Sodium par le droit d’auteur et la propriété intellectuelle, ainsi qu’au constat probatoire dressé par commissaire de justice lors de la mise en ligne de la version 1.0.
+
 ## [1.2.0] — 2026-08-20
 
 ### Personnalisation

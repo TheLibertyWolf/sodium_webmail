@@ -2,11 +2,18 @@
 declare(strict_types=1);
 require_once __DIR__.'/../config.php';
 require_login();
-sodium_require_aptitude('sodium_full_access');
+if(!sodium_can('sodium_general_settings_view')&&!sodium_can('sodium_update')){http_response_code(403);exit('Accès aux paramètres généraux non autorisé.');}
 require_once __DIR__.'/../includes/layout.php';
+$canManage=sodium_can('sodium_general_settings_manage');
+$canUpdate=sodium_can('sodium_update');
 
 $settings=sodium_instance_settings();
 if($_SERVER['REQUEST_METHOD']==='POST'){
+    if(($_POST['action']??'')==='check_updates'){
+        if(!$canUpdate){http_response_code(403);exit('Contrôle des mises à jour non autorisé.');}
+        sodium_update_status(true);flash('success','La disponibilité des mises à jour a été contrôlée.');redirect('/admin/settings.php');
+    }
+    if(!$canManage){http_response_code(403);exit('Modification des paramètres généraux non autorisée.');}
     $accountId=array_key_exists('system_mail_account_id',$_POST)?(int)$_POST['system_mail_account_id']:(int)($settings['system_mail_account_id']??0);
     if($accountId){$check=$pdo->prepare('SELECT COUNT(*) FROM sodium_mail_accounts WHERE id=?');$check->execute([$accountId]);if(!$check->fetchColumn())$accountId=0;}
     $timezone=in_array($_POST['timezone']??'',['Europe/Paris','UTC','Europe/Brussels','Europe/Luxembourg','Europe/Zurich'],true)?(string)$_POST['timezone']:'Europe/Paris';
@@ -41,9 +48,10 @@ $cronAge=$lastCronTimestamp!==false?time()-$lastCronTimestamp:null;
 $cronFailed=($settings['cron_last_status']??'')==='failed';
 $cronState=$cronFailed?'danger':($cronAge!==null&&$cronAge<=180?'success':($cronAge!==null&&$cronAge<=600?'warning':'danger'));
 $cronLabel=$cronFailed?'Dernière exécution en échec':($cronState==='success'?'Opérationnel':($cronState==='warning'?'Exécution en retard':'Non détecté'));
+$updateStatus=$canUpdate?sodium_update_status(false):null;
 sodium_render_header('Paramètres généraux');
 ?>
-<form method="post" class="row g-4">
+<form method="post" class="row g-4"><fieldset class="contents-fieldset" <?=$canManage?'':'disabled'?>>
     <div class="col-12"><div class="form-card"><h2 class="h5 mb-3">Instance Sodium</h2><div class="row g-3">
         <div class="col-md-6"><label class="form-label">Nom de l’instance</label><input class="form-control" name="instance_name" value="<?=e($settings['instance_name'])?>" required></div>
         <div class="col-md-6"><label class="form-label">Organisation titulaire</label><input class="form-control" name="organization_name" value="<?=e($settings['organization_name'])?>"></div>
@@ -63,7 +71,7 @@ sodium_render_header('Paramètres généraux');
         <div class="col-12"><div class="alert alert-info mb-0"><i class="bi bi-shield-check me-2"></i>En mode distant, Sodium bascule automatiquement sur les fichiers locaux si le CDN ne répond pas.</div></div>
     </div></div></div>
     <div class="col-12"><button class="btn btn-danger" type="submit"><i class="bi bi-check-lg me-2"></i>Enregistrer</button></div>
-</form>
+</fieldset></form>
 
 <div class="form-card mt-4">
     <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3">
@@ -74,5 +82,6 @@ sodium_render_header('Paramètres généraux');
     <div class="mb-3"><label class="form-label">Exemple cPanel — une exécution par minute</label><div class="input-group"><input class="form-control font-monospace" id="cronCommand" value="<?=e($cronCommand)?>" readonly><button class="btn btn-outline-secondary" type="button" data-copy-target="#cronCommand"><i class="bi bi-copy"></i> Copier</button></div></div>
     <?php if($lastCronTimestamp!==false): ?><div class="small text-muted">Dernière exécution reçue : <strong><?=e(date('d/m/Y à H:i:s',$lastCronTimestamp))?></strong><?=($settings['cron_last_status']??'')==='failed'?' — la dernière exécution a échoué.':''?></div><?php else: ?><div class="alert alert-warning mb-0"><i class="bi bi-clock-history me-2"></i>Aucune exécution n’a encore été reçue. Ajoutez la commande dans cPanel, puis attendez environ une minute.</div><?php endif; ?>
 </div>
+<?php if($canUpdate&&$updateStatus):?><div class="form-card mt-4"><div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3"><div><h2 class="h5 mb-1">Mises à jour de Sodium</h2><p class="text-muted mb-0">Contrôle la version publique officielle et lance l’assistant sécurisé de mise à jour.</p></div><span class="badge text-bg-<?=$updateStatus['available']?'warning':'success'?> fs-6"><?=$updateStatus['available']?'Mise à jour disponible':'À jour'?></span></div><div class="row g-3 mb-3"><div class="col-md-6"><div class="update-version-box"><small>Version actuelle</small><strong><?=e($updateStatus['current'])?></strong></div></div><div class="col-md-6"><div class="update-version-box <?=$updateStatus['available']?'target':''?>"><small>Dernière version GitHub</small><strong><?=e($updateStatus['latest'])?></strong></div></div></div><?php if($updateStatus['error']):?><div class="alert alert-warning py-2"><?=e($updateStatus['error'])?></div><?php endif;?><div class="d-flex flex-wrap gap-2"><form method="post"><input type="hidden" name="action" value="check_updates"><button class="btn btn-outline-secondary"><i class="bi bi-arrow-clockwise me-2"></i>Contrôler maintenant</button></form><?php if($updateStatus['available']):?><a class="btn btn-warning" href="/admin/update.php"><i class="bi bi-cloud-arrow-down me-2"></i>Mettre à jour</a><?php else:?><a class="btn btn-outline-primary" href="/admin/update.php">Ouvrir le centre de mise à jour</a><?php endif;?></div></div><?php endif;?>
 <script>document.querySelectorAll('[data-copy-target]').forEach(button=>button.addEventListener('click',async()=>{const input=document.querySelector(button.dataset.copyTarget);if(!input)return;await navigator.clipboard.writeText(input.value);button.innerHTML='<i class="bi bi-check-lg"></i> Copié';setTimeout(()=>button.innerHTML='<i class="bi bi-copy"></i> Copier',1500);}));(()=>{const select=document.getElementById('systemMailTransport'),groups=document.querySelectorAll('.system-transport-fields');const sync=()=>groups.forEach(group=>{const active=group.dataset.transport===select.value;group.classList.toggle('d-none',!active);group.querySelectorAll('input,select').forEach(input=>input.disabled=!active);});select.addEventListener('change',sync);sync();})();</script>
 <?php sodium_render_footer();?>

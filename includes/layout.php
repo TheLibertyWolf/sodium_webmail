@@ -16,6 +16,27 @@ function sodium_color_contrast(string $color): string
     return (($red * 299 + $green * 587 + $blue * 114) / 1000) >= 150 ? '#212529' : '#ffffff';
 }
 
+function sodium_render_alternate_navigation(string $theme, bool $licenseValid, ?array $activeMailAccount, array $mailAccounts, array $folders, string $activeFolder, int $unifiedUnread, int $scheduledCount): void
+{
+    if(!in_array($theme,['outlook','roundcube'],true))return;
+    $hasAccounts=(bool)$mailAccounts;
+    if($theme==='outlook'): ?>
+        <nav class="outlook-appbar" aria-label="Navigation Outlook">
+            <a class="outlook-app-brand" href="/index.php"><span class="brand-mark">M</span><strong>Sodium</strong></a>
+            <button class="btn outlook-compose" type="button" data-bs-toggle="modal" data-bs-target="#composeModal" <?=$hasAccounts?'':'disabled'?>><i class="bi bi-pencil-square"></i><span>Nouveau message</span></button>
+            <?php if($licenseValid): ?><div class="outlook-primary-links"><a class="outlook-nav-link <?=sodium_nav_active('/index.php')?>" href="/index.php"><i class="bi bi-inboxes"></i><span>Réception</span><?php if($unifiedUnread):?><b><?=$unifiedUnread?></b><?php endif;?></a><a class="outlook-nav-link <?=sodium_nav_active('/starred.php')?>" href="/starred.php"><i class="bi bi-star"></i><span>Marqués</span></a><a class="outlook-nav-link <?=sodium_nav_active('/outbox.php')?>" href="/outbox.php"><i class="bi bi-send"></i><span>Envoi</span><?php if($scheduledCount):?><b><?=$scheduledCount?></b><?php endif;?></a></div><?php endif; ?>
+            <?php if($hasAccounts): ?><div class="dropdown"><button class="outlook-menu-button" data-bs-toggle="dropdown" type="button"><?php if(!empty($activeMailAccount['icon_path'])):?><img class="mail-account-image" src="<?=e($activeMailAccount['icon_path'])?>" alt=""><?php else:?><i class="bi bi-envelope-at"></i><?php endif;?><span><?=e($activeMailAccount['display_name']?:$activeMailAccount['email_address'])?></span><i class="bi bi-chevron-down"></i></button><div class="dropdown-menu outlook-dropdown"><?php foreach($mailAccounts as $account):?><a class="dropdown-item" href="/mailbox.php?account_id=<?=(int)$account['id']?>&amp;folder=INBOX"><strong><?=e($account['display_name']?:$account['email_address'])?></strong><small><?=e($account['email_address'])?></small></a><?php endforeach;?></div></div>
+            <div class="dropdown"><button class="outlook-menu-button" data-bs-toggle="dropdown" type="button"><i class="bi bi-folder2-open"></i><span>Dossiers</span><i class="bi bi-chevron-down"></i></button><div class="dropdown-menu outlook-dropdown folder-menu"><?php foreach($folders as $folder):?><a class="dropdown-item <?=$activeFolder===(string)$folder['key']?'active':''?>" href="/mailbox.php?account_id=<?=(int)$activeMailAccount['id']?>&amp;folder=<?=rawurlencode((string)$folder['key'])?>"><i class="bi bi-<?=e($folder['icon']??'folder')?>"></i><span><?=e($folder['label']??$folder['key'])?></span><?php if(!empty($folder['unread'])):?><b><?=(int)$folder['unread']?></b><?php endif;?></a><?php endforeach;?></div></div><?php endif; ?>
+            <div class="dropdown ms-auto"><button class="outlook-icon-button" data-bs-toggle="dropdown" type="button" title="Paramètres"><i class="bi bi-gear"></i></button><div class="dropdown-menu dropdown-menu-end outlook-dropdown"><a class="dropdown-item" href="/mail-accounts.php"><i class="bi bi-envelope-at"></i> Comptes mails</a><?php if(sodium_can('sodium_signatures_view')):?><a class="dropdown-item" href="/signatures.php"><i class="bi bi-person-vcard"></i> Signatures</a><?php endif;?><?php if(sodium_can('sodium_labels_view')):?><a class="dropdown-item" href="/tags.php"><i class="bi bi-tags"></i> Tags</a><?php endif;?><?php if(sodium_can('sodium_templates_view')):?><a class="dropdown-item" href="/templates.php"><i class="bi bi-chat-square-text"></i> Modèles</a><?php endif;?><?php if(sodium_can('sodium_settings_view')):?><a class="dropdown-item" href="/messages.php"><i class="bi bi-envelope-gear"></i> Messages</a><?php endif;?><hr class="dropdown-divider"><?php if(sodium_can('sodium_accounts_view')):?><a class="dropdown-item" href="/admin/mail-accounts.php"><i class="bi bi-envelope-check"></i> Gestion des comptes</a><?php endif;?><?php if(sodium_can('sodium_full_access')):?><a class="dropdown-item" href="/admin/users.php"><i class="bi bi-people"></i> Utilisateurs</a><?php endif;?><?php if(sodium_can('sodium_general_settings_view')||sodium_can('sodium_update')):?><a class="dropdown-item" href="/admin/settings.php"><i class="bi bi-sliders"></i> Paramètres généraux</a><?php endif;?><?php if(sodium_can('sodium_security_settings_view')):?><a class="dropdown-item" href="/admin/security.php"><i class="bi bi-shield-lock"></i> Sécurité</a><?php endif;?><?php if(sodium_can('licence')):?><a class="dropdown-item" href="/admin/license.php"><i class="bi bi-key"></i> Licence</a><?php endif;?></div></div>
+            <a class="outlook-icon-button" href="/profile.php" title="Profil"><i class="bi bi-person-circle"></i></a>
+            <form method="post" action="/logout.php"><button class="outlook-icon-button" type="submit" title="Se déconnecter"><i class="bi bi-box-arrow-right"></i></button></form>
+        </nav>
+    <?php else: ?>
+        <nav class="roundcube-app-rail" aria-label="Applications Roundcube"><a class="roundcube-logo" href="/index.php">M</a><a class="<?=sodium_nav_active('/index.php')?>" href="/index.php" title="Courrier"><i class="bi bi-envelope-fill"></i><span>Courrier</span></a><button type="button" data-bs-toggle="modal" data-bs-target="#composeModal" <?=$hasAccounts?'':'disabled'?> title="Rédiger"><i class="bi bi-pencil-square"></i><span>Rédiger</span></button><a class="<?=sodium_nav_active('/starred.php')?>" href="/starred.php" title="Marqués"><i class="bi bi-star-fill"></i><span>Marqués</span></a><a class="<?=sodium_nav_active('/outbox.php')?>" href="/outbox.php" title="Envoi"><i class="bi bi-send-fill"></i><span>Envoi</span></a><a href="/messages.php" title="Paramètres"><i class="bi bi-gear-fill"></i><span>Réglages</span></a><a href="/profile.php" title="Profil"><i class="bi bi-person-fill"></i><span>Profil</span></a><form method="post" action="/logout.php"><button type="submit" title="Se déconnecter"><i class="bi bi-box-arrow-right"></i><span>Quitter</span></button></form></nav>
+        <aside class="roundcube-folder-pane"><div class="roundcube-pane-title"><strong>Dossiers</strong><a href="/messages.php" title="Réglages"><i class="bi bi-gear"></i></a></div><?php if($hasAccounts):?><div class="dropdown mb-3"><button class="roundcube-account" data-bs-toggle="dropdown" type="button"><span><?=e($activeMailAccount['display_name']?:$activeMailAccount['email_address'])?></span><i class="bi bi-chevron-down"></i></button><div class="dropdown-menu w-100"><?php foreach($mailAccounts as $account):?><a class="dropdown-item" href="/mailbox.php?account_id=<?=(int)$account['id']?>&amp;folder=INBOX"><?=e($account['display_name']?:$account['email_address'])?></a><?php endforeach;?></div></div><nav class="roundcube-folders"><?php foreach($folders as $folder):?><a class="<?=$activeFolder===(string)$folder['key']?'active':''?>" href="/mailbox.php?account_id=<?=(int)$activeMailAccount['id']?>&amp;folder=<?=rawurlencode((string)$folder['key'])?>"><i class="bi bi-<?=e($folder['icon']??'folder')?>"></i><span><?=e($folder['label']??$folder['key'])?></span><?php if(!empty($folder['unread'])):?><b><?=(int)$folder['unread']?></b><?php endif;?></a><?php endforeach;?></nav><?php else:?><div class="small text-muted p-3">Aucun compte mail</div><?php endif;?></aside>
+    <?php endif;
+}
+
 function sodium_render_header(string $title): void
 {
     global $pdo, $sodiumDefaultBrowserTitle;
@@ -55,6 +76,7 @@ function sodium_render_header(string $title): void
     }
     $activeFolder = (string) ($_GET['folder'] ?? 'INBOX');
     $messages = flash();
+    $updateStatus=sodium_can('sodium_update')?sodium_update_status(false):null;
     $defaultBrowserTitle = $title . ' - '.$instanceName;
     $sodiumDefaultBrowserTitle = $defaultBrowserTitle;
     $browserTitle = $unifiedUnread > 0
@@ -70,7 +92,8 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="<?=e($bootstrapCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap/bootstrap.min.css\'"':''?>>
         <link href="<?=e($bootstrapIconsCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap-icons/bootstrap-icons.css\'"':''?>>
-        <link href="/css/app.css?v=20260820-03" rel="stylesheet">
+        <link href="/css/app.css?v=20260820-04" rel="stylesheet">
+        <link href="/css/themes.css?v=20260820-02" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
         <meta name="mobile-web-app-capable" content="yes">
@@ -89,6 +112,7 @@ function sodium_render_header(string $title): void
         </script>
     </head>
     <body>
+        <?php sodium_render_alternate_navigation($theme,$licenseValid,$activeMailAccount,$mailAccounts,$folders,$activeFolder,$unifiedUnread,$scheduledCount); ?>
         <aside class="sidebar" id="mainSidebar">
             <div class="brand">
                 <span class="brand-mark">M</span>
@@ -173,14 +197,14 @@ function sodium_render_header(string $title): void
                 </div>
             <?php endif; ?>
 
-            <?php if (sodium_can('sodium_full_access') || sodium_can('sodium_accounts_view') || sodium_can('licence')): ?>
+            <?php if (sodium_can('sodium_full_access') || sodium_can('sodium_accounts_view') || sodium_can('sodium_general_settings_view') || sodium_can('sodium_security_settings_view') || sodium_can('sodium_update') || sodium_can('licence')): ?>
                 <div class="sidebar-separator"></div>
                 <div class="admin-nav">
                     <div class="module-title">Administration</div>
                     <?php if (sodium_can('sodium_full_access')): ?><a class="nav-link <?= sodium_nav_active('/admin/users.php') ?>" href="/admin/users.php"><i class="bi bi-people"></i><span>Utilisateurs</span></a><?php endif; ?>
                     <?php if (sodium_can('sodium_accounts_view')): ?><a class="nav-link <?= sodium_nav_active('/admin/mail-accounts.php') ?>" href="/admin/mail-accounts.php"><i class="bi bi-envelope-at"></i><span>Gestion Comptes mails</span></a><?php endif; ?>
-                    <?php if (sodium_can('sodium_full_access')): ?><a class="nav-link <?= sodium_nav_active('/admin/settings.php') ?>" href="/admin/settings.php"><i class="bi bi-sliders"></i><span>Paramètres généraux</span></a><?php endif; ?>
-                    <?php if (sodium_can('sodium_full_access')): ?><a class="nav-link <?= sodium_nav_active('/admin/security.php') ?>" href="/admin/security.php"><i class="bi bi-shield-lock"></i><span>Paramètres de sécurité</span></a><?php endif; ?>
+                    <?php if (sodium_can('sodium_general_settings_view')||sodium_can('sodium_update')): ?><a class="nav-link <?= sodium_nav_active('/admin/settings.php')||sodium_nav_active('/admin/update.php')?'active':'' ?>" href="/admin/settings.php"><i class="bi bi-sliders"></i><span>Paramètres généraux</span></a><?php endif; ?>
+                    <?php if (sodium_can('sodium_security_settings_view')): ?><a class="nav-link <?= sodium_nav_active('/admin/security.php') ?>" href="/admin/security.php"><i class="bi bi-shield-lock"></i><span>Paramètres de sécurité</span></a><?php endif; ?>
                     <?php if (sodium_can('licence')): ?><a class="nav-link <?= sodium_nav_active('/admin/license.php') ?>" href="/admin/license.php"><i class="bi bi-key"></i><span>Licence</span></a><?php endif; ?>
                 </div>
             <?php endif; ?>
@@ -201,7 +225,7 @@ function sodium_render_header(string $title): void
             <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
                 <div class="modal-header"><div><div class="text-danger small fw-semibold text-uppercase">À propos</div><h2 class="modal-title h4 mb-0" id="aboutModalLabel">Sodium</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 1.2.0</span></div>
+                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 1.3.0</span></div>
                     <h3 class="h6">Édition et réalisation</h3><p><strong>Sodium Webmail</strong> est un logiciel SaaS conçu, édité et maintenu par <strong>Jessy System</strong>. Il centralise l’accès aux comptes de messagerie attribués aux utilisateurs autorisés dans un environnement professionnel privé.</p>
                     <h3 class="h6">Licence d’exploitation</h3><p>Cette instance est mise à disposition dans le cadre d’une licence d’exploitation SaaS <code><?=e($appLicense['license_type']??'non enregistrée')?></code> concédée à <code><?=e($appLicense['rights_holder']??'ayant droit non enregistré')?></code><?php if(!empty($appLicense['registered_at'])): ?>, enregistrée le <code><?=e(sodium_format_date($appLicense['registered_at'],'d/m/Y','date inconnue'))?></code><?php endif; ?><?php if(!empty($appLicense['expires_at'])&&$appLicense['expires_at']<'9999-01-01'): ?> et valable jusqu’au <code><?=e(sodium_format_date($appLicense['expires_at'],'d/m/Y','date inconnue'))?></code><?php elseif(!empty($appLicense['expires_at'])): ?>, pour une durée <code>perpétuelle</code><?php endif; ?>. Elle confère un droit personnel d’accès et d’utilisation du service sur le domaine autorisé, dans les limites fonctionnelles, techniques et contractuelles convenues. Elle n’emporte aucune cession des droits de propriété intellectuelle sur le logiciel.</p>
                     <h3 class="h6">Propriété intellectuelle et étendue des droits</h3><p>L’architecture, le code, l’interface, les développements, les textes, les éléments graphiques, les bases de données et les composants de Sodium demeurent protégés. Sauf autorisation écrite ou exception prévue par la loi, sont interdits la reproduction, la mise à disposition de tiers, la sous-licence, la commercialisation, l’extraction substantielle, l’adaptation ou le contournement des dispositifs techniques de licence. Les droits strictement nécessaires à l’utilisation conforme du logiciel par l’ayant droit demeurent réservés conformément aux dispositions légales applicables.</p>
@@ -214,7 +238,7 @@ function sodium_render_header(string $title): void
                     <h3 class="h6">Protection des données</h3><p>L’ayant droit demeure responsable de la détermination des finalités et des habilitations associées aux traitements réalisés au moyen de Sodium. Les mesures de sécurité, de confidentialité, de sauvegarde et de gestion des incidents doivent être organisées conformément aux rôles effectifs des parties et à la réglementation applicable. Les présentes informations ne remplacent pas un contrat de licence, un accord de niveau de service ou un accord de traitement des données lorsqu’un tel document est requis.</p>
                     <div class="border rounded p-3 bg-body-tertiary"><strong>Copyright © 2026 Jessy System — Tous droits réservés.</strong><br><span class="text-muted">Produit : <code><?=e($appLicense['product_name']??'Sodium Webmail')?></code> · Domaine autorisé : <code><?=e($appLicense['allowed_domain']??'non enregistré')?></code> · Statut : <code><?=e(!empty($appLicense['is_valid'])?'licence active':'activation requise')?></code>.</span></div>
                 </div>
-                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 1.2.0</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 1.3.0</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
         </div>
 
@@ -233,6 +257,7 @@ function sodium_render_header(string $title): void
                 <?php if($licenseValid): ?><button class="btn btn-outline-secondary notification-toggle" id="notificationToggle" type="button" title="Notifications désactivées" aria-label="Notifications désactivées" aria-pressed="false"><i class="bi bi-bell-slash"></i></button>
                 <?php endif; ?>
             </header>
+            <?php if(!empty($updateStatus['available'])):?><a class="update-available-banner" href="/admin/settings.php"><i class="bi bi-cloud-arrow-down-fill"></i><span>Une mise à jour Sodium <strong><?=e($updateStatus['latest'])?></strong> est disponible.</span><span class="ms-auto">Consulter <i class="bi bi-chevron-right"></i></span></a><?php endif;?>
             <section class="content">
                 <div class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" id="appToastContainer">
                     <?php foreach ($messages as $type => $message): $toastType = in_array($type, ['success', 'danger', 'warning', 'info'], true) ? $type : 'warning'; ?>
@@ -247,6 +272,8 @@ function sodium_render_header(string $title): void
 function sodium_render_footer(): void
 {
     global $pdo, $sodiumDefaultBrowserTitle;
+    $remoteDependencies=sodium_dependency_source()==='remote';
+    $bootstrapJs=$remoteDependencies?'https://cdn.jsdelivr.net/npm/bootstrap@5.3.8/dist/js/bootstrap.bundle.min.js':'/assets/vendor/bootstrap/bootstrap.bundle.min.js';
     $sodiumDefaultBrowserTitle = (string) ($sodiumDefaultBrowserTitle ?? 'Sodium');
     $accounts = sodium_accessible_mail_accounts();
     $user = current_user();

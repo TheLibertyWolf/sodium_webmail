@@ -2,11 +2,13 @@
 declare(strict_types=1);
 require_once __DIR__.'/../config.php';
 require_login();
-sodium_require_aptitude('sodium_full_access');
+sodium_require_aptitude('sodium_security_settings_view');
 require_once __DIR__.'/../includes/layout.php';
+$canManage=sodium_can('sodium_security_settings_manage');
 
 $settings=sodium_instance_settings();
 if($_SERVER['REQUEST_METHOD']==='POST'){
+    if(!$canManage){http_response_code(403);exit('Modification des paramètres de sécurité non autorisée.');}
     $enabled=!empty($_POST['turnstile_enabled']);
     $siteKey=array_key_exists('turnstile_site_key',$_POST)?trim((string)$_POST['turnstile_site_key']):trim((string)($settings['turnstile_site_key']??''));
     $secret=trim((string)($_POST['turnstile_secret_key']??''));
@@ -22,7 +24,7 @@ $enabled=sodium_turnstile_enabled();
 $secretConfigured=sodium_turnstile_secret_key()!=='';
 sodium_render_header('Paramètres de sécurité');
 ?>
-<form method="post" class="row g-4">
+<form method="post" class="row g-4"><fieldset class="contents-fieldset" <?=$canManage?'':'disabled'?>>
     <div class="col-12"><div class="form-card">
         <div class="d-flex flex-wrap align-items-start justify-content-between gap-3 mb-3"><div><h2 class="h5 mb-1">Cloudflare Turnstile</h2><p class="text-muted mb-0">Protection anti-robots appliquée à l’authentification et à la récupération de mot de passe.</p></div><span class="badge text-bg-<?=$enabled?'success':'secondary'?> fs-6"><?=$enabled?'Activé':'Désactivé'?></span></div>
         <div class="alert alert-info"><i class="bi bi-shield-check me-2"></i>Turnstile est facultatif, mais vivement recommandé pour limiter les attaques automatisées et le bourrage d’identifiants.</div>
@@ -33,6 +35,6 @@ sodium_render_header('Paramètres de sécurité');
         </div>
     </div></div>
     <div class="col-12"><button class="btn btn-danger" type="submit"><i class="bi bi-shield-lock me-2"></i>Enregistrer la sécurité</button></div>
-</form>
+</fieldset></form>
 <script>(()=>{const toggle=document.getElementById('turnstileEnabled'),fields=document.getElementById('turnstileFields');const sync=()=>{fields.style.opacity=toggle.checked?'1':'.55';fields.querySelectorAll('input').forEach(input=>input.disabled=!toggle.checked);};toggle.addEventListener('change',sync);sync();})();</script>
 <?php sodium_render_footer();?>

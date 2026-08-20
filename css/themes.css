@@ -1,0 +1,75 @@
+/* Interfaces structurelles Sodium Outlook et Roundcube */
+.outlook-appbar,.roundcube-app-rail,.roundcube-folder-pane{display:none}
+
+html[data-sodium-theme="outlook"] body{padding-top:58px;background:#fff;font-family:"Segoe UI",Arial,sans-serif}
+html[data-sodium-theme="outlook"] .sidebar{display:none!important}
+html[data-sodium-theme="outlook"] .app-main,html[data-sodium-theme="outlook"].sidebar-collapsed .app-main{margin-left:0}
+.outlook-appbar{position:fixed;z-index:1040;inset:0 0 auto 0;height:58px;align-items:center;gap:4px;padding:0 10px;background:#0f6cbd;color:#fff;box-shadow:0 1px 4px rgba(0,0,0,.22)}
+html[data-sodium-theme="outlook"] .outlook-appbar{display:flex}
+.outlook-app-brand{height:100%;display:flex;align-items:center;gap:9px;padding:0 12px;color:#fff;text-decoration:none}
+.outlook-app-brand .brand-mark{background:#fff;color:#0f6cbd;border-radius:3px}
+.outlook-compose{height:38px;margin:0 8px;color:#242424;background:#fff;border:0;border-radius:3px;display:flex;align-items:center;gap:8px;box-shadow:0 1px 2px rgba(0,0,0,.14)}
+.outlook-primary-links{height:100%;display:flex;align-items:stretch}
+.outlook-nav-link{position:relative;display:flex;align-items:center;gap:7px;padding:0 12px;color:rgba(255,255,255,.9);text-decoration:none;border-bottom:3px solid transparent}
+.outlook-nav-link:hover,.outlook-nav-link.active{color:#fff;background:rgba(0,0,0,.12);border-bottom-color:#fff}
+.outlook-nav-link b{min-width:18px;height:18px;display:grid;place-items:center;padding:0 5px;border-radius:9px;color:#0f6cbd;background:#fff;font-size:.7rem}
+.outlook-menu-button,.outlook-icon-button{height:38px;display:flex;align-items:center;gap:7px;padding:0 10px;color:#fff;background:transparent;border:1px solid transparent;border-radius:3px}
+.outlook-icon-button{width:38px;justify-content:center;text-decoration:none;font-size:1.1rem}
+.outlook-menu-button:hover,.outlook-menu-button:focus,.outlook-icon-button:hover,.outlook-icon-button:focus{color:#fff;background:rgba(0,0,0,.14);border-color:rgba(255,255,255,.18)}
+.outlook-dropdown{min-width:260px;padding:6px;border:0;border-radius:3px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.outlook-dropdown .dropdown-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:2px}
+.outlook-dropdown .dropdown-item small{display:block;margin-left:auto;color:var(--bs-secondary-color)}
+.outlook-dropdown.folder-menu .dropdown-item span{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis}
+.outlook-dropdown.folder-menu .dropdown-item b{font-size:.72rem}
+html[data-sodium-theme="outlook"] .topbar{min-height:54px;padding:8px 18px;background:#f5f5f5;border-bottom:1px solid #d2d0ce}
+html[data-sodium-theme="outlook"] .topbar-title-wrap>div{display:flex;align-items:baseline;gap:12px}
+html[data-sodium-theme="outlook"] .topbar-title-wrap .text-muted{order:2}
+html[data-sodium-theme="outlook"] .content{padding:0 12px 12px}
+html[data-sodium-theme="outlook"] .table-card,html[data-sodium-theme="outlook"] .form-card{border-radius:0;border-color:#e1dfdd;box-shadow:none}
+html[data-sodium-theme="outlook"] .message-list{border-radius:0}
+html[data-sodium-theme="outlook"] .message-row{min-height:44px;border-width:0 0 1px;border-radius:0;background:#fff}
+html[data-sodium-theme="outlook"] .message-row:hover{background:#f3f9fd}
+html[data-sodium-theme="outlook"] .mail-toolbar{border-radius:0;background:#fafafa}
+html[data-sodium-theme="outlook"] .modal-content{border-radius:2px}
+
+html[data-sodium-theme="roundcube"] body{background:#dfe4e8;font-family:Arial,Helvetica,sans-serif}
+html[data-sodium-theme="roundcube"] .sidebar{display:none!important}
+html[data-sodium-theme="roundcube"] .app-main,html[data-sodium-theme="roundcube"].sidebar-collapsed .app-main{margin-left:326px;min-height:100vh;background:#edf0f2;border-left:1px solid #b4bec7}
+html[data-sodium-theme="roundcube"] .roundcube-app-rail{display:flex}
+html[data-sodium-theme="roundcube"] .roundcube-folder-pane{display:block}
+.roundcube-app-rail{position:fixed;z-index:1040;inset:0 auto 0 0;width:76px;flex-direction:column;align-items:stretch;background:#252e36;color:#d9e1e7;box-shadow:2px 0 8px rgba(0,0,0,.16)}
+.roundcube-app-rail a,.roundcube-app-rail button{min-height:66px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:7px 3px;color:#d9e1e7;background:transparent;border:0;border-left:4px solid transparent;text-decoration:none;font-size:.69rem}
+.roundcube-app-rail form button{width:100%}
+.roundcube-app-rail a i,.roundcube-app-rail button i{font-size:1.35rem}
+.roundcube-app-rail a:hover,.roundcube-app-rail button:hover,.roundcube-app-rail .active{color:#fff;background:#34414c;border-left-color:#37a5e4}
+.roundcube-app-rail .roundcube-logo{min-height:58px;color:#fff;background:#2478b5;border-left:0;font-size:1.35rem;font-weight:700}
+.roundcube-folder-pane{position:fixed;z-index:1035;inset:0 auto 0 76px;width:250px;padding:16px 12px;overflow:auto;color:#26323d;background:#f4f6f7;border-right:1px solid #aeb8c2}
+.roundcube-pane-title{display:flex;align-items:center;justify-content:space-between;margin:0 4px 14px;padding-bottom:12px;border-bottom:1px solid #cbd2d8;font-size:1.05rem}
+.roundcube-pane-title a{color:#536270}
+.roundcube-account{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:9px 10px;color:#26323d;background:#fff;border:1px solid #b9c2ca;border-radius:4px;text-align:left}
+.roundcube-account span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roundcube-folders{display:flex;flex-direction:column;gap:2px}
+.roundcube-folders a{display:grid;grid-template-columns:24px minmax(0,1fr) auto;align-items:center;gap:7px;padding:8px 9px;color:#33404b;text-decoration:none;border-radius:4px}
+.roundcube-folders a:hover{background:#e1e7eb}
+.roundcube-folders a.active{color:#fff;background:#2478b5}
+.roundcube-folders a span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.roundcube-folders a b{font-size:.72rem}
+html[data-sodium-theme="roundcube"] .topbar{min-height:58px;padding:9px 16px;background:linear-gradient(#fff,#eef1f3);border-bottom:1px solid #aeb8c2}
+html[data-sodium-theme="roundcube"] .content{padding:12px}
+html[data-sodium-theme="roundcube"] .table-card,html[data-sodium-theme="roundcube"] .form-card{border-radius:4px;border-color:#aeb8c2;box-shadow:0 1px 3px rgba(39,52,62,.1)}
+html[data-sodium-theme="roundcube"] .message-row{border-radius:0;border-width:0 0 1px;background:#fff}
+html[data-sodium-theme="roundcube"] .message-row:nth-child(even){background:#f8f9fa}
+html[data-sodium-theme="roundcube"] .message-row:hover{background:#ddebF5}
+
+@media(max-width:1100px){
+ .outlook-appbar{gap:1px}.outlook-nav-link span,.outlook-menu-button span{display:none}.outlook-nav-link{padding:0 10px}.outlook-app-brand strong{display:none}.outlook-compose span{display:none}
+}
+@media(max-width:767.98px){
+ html[data-sodium-theme="outlook"] body{padding-top:52px}.outlook-appbar{height:52px;padding:0 5px;overflow-x:auto}.outlook-app-brand{padding:0 5px}.outlook-compose{margin:0 3px;padding:0 10px}.outlook-primary-links{flex:0 0 auto}.outlook-menu-button{padding:0 9px}.outlook-appbar .ms-auto{margin-left:0!important}
+ html[data-sodium-theme="outlook"] .topbar{min-height:50px}.outlook-dropdown{position:fixed!important;inset:54px 8px auto 8px!important;transform:none!important;width:auto}
+ html[data-sodium-theme="roundcube"] .roundcube-folder-pane{display:none}.roundcube-app-rail{inset:auto 0 0 0;width:auto;height:58px;flex-direction:row;justify-content:space-around}
+ .roundcube-app-rail .roundcube-logo{display:none}.roundcube-app-rail a,.roundcube-app-rail button{min-width:48px;min-height:58px;flex:1;border-left:0;border-bottom:3px solid transparent}.roundcube-app-rail form{display:flex;flex:1}.roundcube-app-rail form button{min-width:48px}.roundcube-app-rail a span,.roundcube-app-rail button span{display:none}.roundcube-app-rail a:hover,.roundcube-app-rail button:hover,.roundcube-app-rail .active{border-left:0;border-bottom-color:#37a5e4}
+ html[data-sodium-theme="roundcube"] .app-main,html[data-sodium-theme="roundcube"].sidebar-collapsed .app-main{margin-left:0;padding-bottom:58px;border-left:0}
+ html[data-sodium-theme="roundcube"] .sidebar{display:flex!important}
+ html[data-sodium-theme="roundcube"]:not(.mobile-menu-open) .sidebar{transform:translateX(-100%)}
+}

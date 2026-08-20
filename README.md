@@ -2,7 +2,7 @@
 
 Sodium est un webmail professionnel multi-utilisateurs et multi-comptes. Il centralise des boîtes IMAP dans une interface unifiée et permet de consulter, classer, rédiger, programmer et suivre les messages selon des habilitations précises.
 
-[![Version](https://img.shields.io/badge/version-1.2.0-2271b1)](https://github.com/TheLibertyWolf/sodium_webmail/releases)
+[![Version](https://img.shields.io/badge/version-1.3.0-2271b1)](https://github.com/TheLibertyWolf/sodium_webmail/releases)
 [![PHP](https://img.shields.io/badge/PHP-%3E%3D%208.2-777bb4)](https://www.php.net/)
 [![MySQL](https://img.shields.io/badge/MySQL-%3E%3D%208.0-4479a1)](https://www.mysql.com/)
 [![License](https://img.shields.io/badge/license-propri%C3%A9taire-46b450)](LICENSE.md)
@@ -10,13 +10,13 @@ Sodium est un webmail professionnel multi-utilisateurs et multi-comptes. Il cent
 
 <sub>🇫🇷 Français · 🇬🇧 English · 🇩🇪 Deutsch · 🇮🇹 Italiano · 🇪🇸 Español · 🇵🇹 Português</sub>
 
-> **Sodium Webmail 1.2.0** — version stable, officiellement disponible.
+> **Sodium Webmail 1.3.0** — version stable, officiellement disponible.
 
 ## Aperçu
 
 ![Aperçu de Sodium Webmail : connexion, boîte unifiée, comptes mails, lecture et rédaction](docs/screenshots/sodium-overview.png)
 
-L’interface réunit l’authentification, la boîte de réception unifiée, la gestion multi-comptes, la lecture sécurisée et le rédacteur de messages dans un environnement responsive proposant les thèmes Sodium Light, Sodium Dark, Sodium Outlook et Roundcube.
+L’interface réunit l’authentification, la boîte de réception unifiée, la gestion multi-comptes, la lecture sécurisée et le rédacteur de messages. Sodium Outlook adopte une navigation horizontale complète ; Roundcube utilise un rail d’applications et un panneau de dossiers distinct.
 
 ## Fonctionnalités principales
 
@@ -33,7 +33,7 @@ L’interface réunit l’authentification, la boîte de réception unifiée, la
 - contacts suggérés à partir des correspondants connus ;
 - messages marqués, filtres lu/non lu et actions multiples ;
 - notifications de bureau et Web Push ;
-- thèmes clair et sombre, interface responsive et PWA ;
+- quatre interfaces : Sodium Light, Sodium Dark, Sodium Outlook à navigation horizontale et Roundcube à panneaux spécialisés ;
 - interface disponible en français, anglais, allemand, italien, espagnol et portugais, avec préférence propre à chaque utilisateur ;
 - gestion autonome des utilisateurs, comptes, habilitations et paramètres d’instance ;
 - obligation 2FA configurable individuellement par utilisateur ;
@@ -41,6 +41,7 @@ L’interface réunit l’authentification, la boîte de réception unifiée, la
 - choix du transport des notifications système : SMTP Sodium, API Brevo ou fonction PHP `mail()` ;
 - contrôle de la dernière exécution du cron avec commande cPanel prête à copier ;
 - activation par licence liée au domaine.
+- contrôle des versions GitHub et assistant de mise à jour avec sauvegarde et migrations SQL.
 
 ## Prérequis serveur
 
@@ -197,7 +198,9 @@ Avant toute mise à jour :
 2. vérifier la compatibilité de PHP et des extensions ;
 3. déployer les nouveaux fichiers sans écraser `config.local.php` ni `.sodium-mail-key` ;
 4. vider ou renouveler le cache PWA si la version du service worker change ;
-5. contrôler la connexion, la relève IMAP, l’envoi SMTP et la tâche cron.
+  5. contrôler la connexion, la relève IMAP, l’envoi SMTP et la tâche cron.
+
+Un utilisateur disposant de l’aptitude « Mises à jour » peut également utiliser `Administration > Paramètres généraux` pour comparer la version installée à la dernière version GitHub. L’assistant accepte le téléchargement officiel ou une archive ZIP manuelle, crée une sauvegarde privée du code remplacé, protège les données propres à l’instance et exécute les migrations SQL encore absentes.
 
 ## Licence
 
