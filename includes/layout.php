@@ -225,7 +225,7 @@ function sodium_render_header(string $title): void
             <div class="modal-dialog modal-lg modal-dialog-scrollable"><div class="modal-content">
                 <div class="modal-header"><div><div class="text-danger small fw-semibold text-uppercase">À propos</div><h2 class="modal-title h4 mb-0" id="aboutModalLabel">Sodium</h2></div><button class="btn-close" type="button" data-bs-dismiss="modal" aria-label="Fermer"></button></div>
                 <div class="modal-body">
-                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 1.3.0</span></div>
+                    <div class="d-flex align-items-center gap-3 mb-4"><span class="brand-mark flex-shrink-0">M</span><div><strong class="d-block fs-5">Sodium</strong><span class="text-muted">Webmail professionnel privé</span></div><span class="badge text-bg-danger ms-auto">Version 1.3.1</span></div>
                     <h3 class="h6">Édition et réalisation</h3><p><strong>Sodium Webmail</strong> est un logiciel SaaS conçu, édité et maintenu par <strong>Jessy System</strong>. Il centralise l’accès aux comptes de messagerie attribués aux utilisateurs autorisés dans un environnement professionnel privé.</p>
                     <h3 class="h6">Licence d’exploitation</h3><p>Cette instance est mise à disposition dans le cadre d’une licence d’exploitation SaaS <code><?=e($appLicense['license_type']??'non enregistrée')?></code> concédée à <code><?=e($appLicense['rights_holder']??'ayant droit non enregistré')?></code><?php if(!empty($appLicense['registered_at'])): ?>, enregistrée le <code><?=e(sodium_format_date($appLicense['registered_at'],'d/m/Y','date inconnue'))?></code><?php endif; ?><?php if(!empty($appLicense['expires_at'])&&$appLicense['expires_at']<'9999-01-01'): ?> et valable jusqu’au <code><?=e(sodium_format_date($appLicense['expires_at'],'d/m/Y','date inconnue'))?></code><?php elseif(!empty($appLicense['expires_at'])): ?>, pour une durée <code>perpétuelle</code><?php endif; ?>. Elle confère un droit personnel d’accès et d’utilisation du service sur le domaine autorisé, dans les limites fonctionnelles, techniques et contractuelles convenues. Elle n’emporte aucune cession des droits de propriété intellectuelle sur le logiciel.</p>
                     <h3 class="h6">Propriété intellectuelle et étendue des droits</h3><p>L’architecture, le code, l’interface, les développements, les textes, les éléments graphiques, les bases de données et les composants de Sodium demeurent protégés. Sauf autorisation écrite ou exception prévue par la loi, sont interdits la reproduction, la mise à disposition de tiers, la sous-licence, la commercialisation, l’extraction substantielle, l’adaptation ou le contournement des dispositifs techniques de licence. Les droits strictement nécessaires à l’utilisation conforme du logiciel par l’ayant droit demeurent réservés conformément aux dispositions légales applicables.</p>
@@ -238,7 +238,7 @@ function sodium_render_header(string $title): void
                     <h3 class="h6">Protection des données</h3><p>L’ayant droit demeure responsable de la détermination des finalités et des habilitations associées aux traitements réalisés au moyen de Sodium. Les mesures de sécurité, de confidentialité, de sauvegarde et de gestion des incidents doivent être organisées conformément aux rôles effectifs des parties et à la réglementation applicable. Les présentes informations ne remplacent pas un contrat de licence, un accord de niveau de service ou un accord de traitement des données lorsqu’un tel document est requis.</p>
                     <div class="border rounded p-3 bg-body-tertiary"><strong>Copyright © 2026 Jessy System — Tous droits réservés.</strong><br><span class="text-muted">Produit : <code><?=e($appLicense['product_name']??'Sodium Webmail')?></code> · Domaine autorisé : <code><?=e($appLicense['allowed_domain']??'non enregistré')?></code> · Statut : <code><?=e(!empty($appLicense['is_valid'])?'licence active':'activation requise')?></code>.</span></div>
                 </div>
-                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 1.3.0</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
+                <div class="modal-footer"><span class="text-muted small me-auto">Sodium 1.3.1</span><button class="btn btn-danger" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
         </div>
 
@@ -356,6 +356,9 @@ function sodium_render_footer(): void
                 <input type="hidden" name="forward_account_id" value="">
                 <input type="hidden" name="forward_folder" value="">
                 <input type="hidden" name="forward_uid" value="">
+                <input type="hidden" name="source_draft_account_id" value="">
+                <input type="hidden" name="source_draft_folder" value="">
+                <input type="hidden" name="source_draft_uid" value="">
                 <div class="modal-header"><h2 class="modal-title h5"><i class="bi bi-pencil-square me-2"></i>Nouveau message</h2><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body"><div class="row g-0 compose-layout"><div class="col-xl-9 compose-main"><div class="row g-3">
                     <div class="col-md-5"><label class="form-label">Expéditeur</label><select class="form-select" name="mail_account_id" id="composeAccount" required><?php foreach ($accounts as $account): ?><?php if (!empty($account['can_send'])): ?><option value="<?= (int)$account['id'] ?>" <?= $defaultComposeAccountId===(int)$account['id']?'selected':'' ?>><?= e($account['display_name'] ?: $account['email_address']) ?> — <?= e($account['email_address']) ?></option><?php endif; ?><?php endforeach; ?></select></div>
@@ -791,7 +794,37 @@ function sodium_render_footer(): void
                     }
                 };
                 document.getElementById('readerAttachmentPreviewClose')?.addEventListener('click', closeAttachmentPreview);
+                const openDraftMessage = async row => {
+                    const composeElement=document.getElementById('composeModal'),composeForm=composeElement?.querySelector('form');
+                    if(!composeElement||!composeForm)return;
+                    row.classList.add('is-loading');
+                    try{
+                        const response=await fetch(`/api/message.php?account_id=${encodeURIComponent(row.dataset.account)}&folder=${encodeURIComponent(row.dataset.folder)}&uid=${encodeURIComponent(row.dataset.uid)}`),message=await response.json();
+                        if(!response.ok)throw new Error(message.error||'Chargement du brouillon impossible.');
+                        composeForm.reset();
+                        composeForm.querySelectorAll('[data-recipient-field]').forEach(field=>field.dispatchEvent(new Event('recipient:reset')));
+                        composeForm.querySelectorAll('[data-forward-part],[name="attachment_tokens[]"]').forEach(input=>input.remove());
+                        composeForm.querySelectorAll('.forwarded-attachment-list,.attachment-file-list').forEach(list=>list.innerHTML='');
+                        composeForm.elements.compose_id.value='';
+                        composeForm.elements.mail_account_id.value=String(message.account_id);
+                        composeForm.elements.source_draft_account_id.value=String(message.account_id);
+                        composeForm.elements.source_draft_folder.value=String(message.folder);
+                        composeForm.elements.source_draft_uid.value=String(message.uid);
+                        composeForm.elements.forward_account_id.value=String(message.account_id);
+                        composeForm.elements.forward_folder.value=String(message.folder);
+                        composeForm.elements.forward_uid.value=String(message.uid);
+                        composeAccount?.dispatchEvent(new Event('change'));
+                        const recipientFields={to_addresses:'to_email',cc_addresses:'cc_email',bcc_addresses:'bcc_email'};
+                        Object.entries(recipientFields).forEach(([source,name])=>{const field=composeForm.querySelector(`[name="${name}"]`)?.closest('[data-recipient-field]');(message[source]||[]).forEach(address=>field?.dispatchEvent(new CustomEvent('recipient:add',{detail:{email:address.email||'',name:address.name||''}})));});
+                        composeForm.elements.subject.value=message.subject&&message.subject!=='(pas d’objet)'?message.subject:'';
+                        const editor=composeForm.querySelector('.rich-editor-content'),textarea=composeForm.querySelector('textarea[name="content"]');if(editor)editor.innerHTML=message.draft_html||message.html||'';if(textarea)textarea.value=message.draft_html||message.html||'';
+                        const attachmentList=composeForm.querySelector('.forwarded-attachment-list');(message.attachments||[]).forEach(file=>{const input=document.createElement('input');input.type='hidden';input.name='forward_parts[]';input.value=file.part;input.dataset.forwardPart='1';composeForm.appendChild(input);const item=document.createElement('div');item.className='attachment-file-item';const label=document.createElement('span');label.textContent=file.name||'Pièce jointe';const remove=document.createElement('button');remove.type='button';remove.className='btn btn-sm btn-link text-danger';remove.innerHTML='<i class="bi bi-x-lg"></i>';remove.addEventListener('click',()=>{input.remove();item.remove()});item.append(label,remove);attachmentList?.appendChild(item);});
+                        composeForm.querySelector('.modal-title').innerHTML='<i class="bi bi-file-earmark-text me-2"></i>Reprendre le brouillon';
+                        bootstrap.Modal.getOrCreateInstance(composeElement).show();
+                    }catch(error){showClientToast(error.message||'Chargement du brouillon impossible.','danger')}finally{row.classList.remove('is-loading')}
+                };
                 const openMessage = async row => {
+                    if(row.dataset.draftFolder==='1'){await openDraftMessage(row);return;}
                     if (!readerModal) return;
                     document.querySelectorAll('[data-bs-toggle="tooltip"]').forEach(element => bootstrap.Tooltip.getInstance(element)?.hide());
                     readerMessage = {account_id: row.dataset.account, folder: row.dataset.folder, uid: row.dataset.uid, selection: row.querySelector('.message-checkbox')?.value || ''};
@@ -1312,7 +1345,7 @@ function sodium_render_footer(): void
                     form?.querySelectorAll('.attachment-file-list').forEach(list => { list.innerHTML = ''; });
                     form?.querySelectorAll('.forwarded-attachment-list').forEach(list => { list.innerHTML = ''; });
                     form?.querySelectorAll('[data-forward-part]').forEach(input => input.remove());
-                    form?.querySelectorAll('[name="reply_account_id"],[name="reply_message_key"],[name="reply_message_id"],[name="forward_account_id"],[name="forward_folder"],[name="forward_uid"]').forEach(input => { input.value = ''; });
+                    form?.querySelectorAll('[name="reply_account_id"],[name="reply_message_key"],[name="reply_message_id"],[name="forward_account_id"],[name="forward_folder"],[name="forward_uid"],[name="source_draft_account_id"],[name="source_draft_folder"],[name="source_draft_uid"]').forEach(input => { input.value = ''; });
                     const modalTitle = form?.querySelector('.modal-title');
                     if (modalTitle) modalTitle.innerHTML = '<i class="bi bi-pencil-square me-2"></i>Nouveau message';
                     syncSignatures();

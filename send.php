@@ -70,6 +70,13 @@ if($forwardAccountId&&$forwardUid&&$forwardFolder!==''&&$forwardParts){
         $attachments[]=['name'=>(string)$file['name'],'type'=>$mime,'data'=>(string)$file['data']];
     }
 }
+$removeSourceDraft=static function()use($accounts):void{
+    $sourceAccountId=(int)($_POST['source_draft_account_id']??0);$sourceFolder=(string)($_POST['source_draft_folder']??'');$sourceUid=(int)($_POST['source_draft_uid']??0);
+    if(!$sourceAccountId||!$sourceUid||$sourceFolder==='')return;
+    $sourceAccount=null;foreach($accounts as $candidate)if((int)$candidate['id']===$sourceAccountId){$sourceAccount=$candidate;break;}
+    if(!$sourceAccount)return;
+    try{sodium_delete_imap_message($sourceAccount,$sourceFolder,$sourceUid);sodium_refresh_account_cache($sourceAccountId,true);}catch(Throwable $exception){error_log('[Sodium draft cleanup] '.$exception->getMessage());flash('warning','Le message a été enregistré, mais l’ancien brouillon IMAP n’a pas pu être supprimé.');}
+};
 if($composeId&&!$attachments){
     $existingAttachmentStmt=$pdo->prepare("SELECT attachments_json FROM sodium_composed_messages WHERE id=? AND user_id=? AND status IN ('draft','failed')");
     $existingAttachmentStmt->execute([$composeId,(int)current_user()['id']]);
@@ -120,6 +127,7 @@ if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $stmt->execute([(int)current_user()['id'],$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null]);
     }
+    $removeSourceDraft();
     if($composeAction==='send'){
         sodium_delete_temp_uploads($temporaryAttachments);
         flash('success','Message placé en attente pendant '.$sendDelay.' seconde'.($sendDelay>1?'s':'').'. Vous pouvez encore l’annuler depuis la boîte d’envoi.');

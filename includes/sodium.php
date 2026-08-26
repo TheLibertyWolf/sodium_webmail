@@ -504,7 +504,7 @@ function sodium_verify_license_key(string $licenseKey): array
     if(!preg_match('/^[a-f0-9]{128}$/',strtolower($licenseKey)))return ['status'=>'invalid','message'=>'Format de clé invalide.'];
     if(!function_exists('curl_init'))return ['status'=>'invalid','message'=>'Service de vérification indisponible.'];
     $curl=curl_init('https://licence.jessysystem.com/');
-    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'1.3.0'])]);
+    curl_setopt_array($curl,[CURLOPT_POST=>true,CURLOPT_RETURNTRANSFER=>true,CURLOPT_TIMEOUT=>12,CURLOPT_HTTPHEADER=>['Content-Type: application/json','Accept: application/json'],CURLOPT_POSTFIELDS=>json_encode(['license_key'=>strtolower($licenseKey),'product_slug'=>defined('SODIUM_LICENSE_PRODUCT_SLUG')?SODIUM_LICENSE_PRODUCT_SLUG:'sodium-webmail','domain'=>defined('SODIUM_LICENSE_DOMAIN')?SODIUM_LICENSE_DOMAIN:strtolower((string)($_SERVER['HTTP_HOST']??'')),'version'=>'1.3.1'])]);
     $body=curl_exec($curl);$code=(int)curl_getinfo($curl,CURLINFO_RESPONSE_CODE);$error=curl_error($curl);curl_close($curl);
     if($body===false||$code!==200)return ['status'=>'invalid','message'=>$error!==''?'Serveur de licences inaccessible.':'Réponse invalide du serveur de licences.'];
     $result=json_decode((string)$body,true);
@@ -1408,6 +1408,19 @@ function sodium_bulk_move(array $account, string $sourceFolder, array $uids, str
     } finally {
         imap_close($stream);
     }
+}
+
+function sodium_delete_imap_message(array $account,string $folder,int $uid):void
+{
+    if($uid<1||sodium_folder_icon($folder)!=='file-earmark')throw new RuntimeException('La source du brouillon IMAP est invalide.');
+    $stream=sodium_imap_open_account($account,$folder,false);
+    try{
+        if(!@imap_setflag_full($stream,(string)$uid,'\\Deleted',ST_UID)){
+            $errors=imap_errors()?:[];
+            throw new RuntimeException($errors?end($errors):'Suppression du brouillon IMAP impossible.');
+        }
+        @imap_expunge($stream);
+    }finally{imap_close($stream);}
 }
 
 function sodium_set_seen(array $account, string $folder, array $uids, bool $seen): void

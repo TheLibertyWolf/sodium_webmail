@@ -14,6 +14,7 @@ try{
     sodium_set_seen($account,$folder,[$uid],true);
     sodium_refresh_account_cache($accountId,true);
     $message=sodium_fetch_message_content($account,$folder,$uid);
+    $message['draft_html']=sodium_unblock_remote_images((string)($message['html']??''));
     $message['remote_images_blocked']=str_contains((string)$message['html'],'data-sodium-src=');
     $message['images_allowed']=false;
     if($message['remote_images_blocked']&&!empty($message['sender_email'])){

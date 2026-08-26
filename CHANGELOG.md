@@ -2,6 +2,14 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [1.3.1] — 2026-08-26
+
+### Brouillons
+
+- ouverture directe des messages placés dans un dossier IMAP « Brouillons » dans la fenêtre de rédaction, sans passer par la lecture ;
+- restauration de l’expéditeur, des destinataires À/Cc/Cci, de l’objet, du contenu et des pièces jointes ;
+- suppression sécurisée de l’ancien brouillon IMAP uniquement après l’enregistrement, la programmation ou la mise en boîte d’envoi réussie du message repris.
+
 ## [1.3.0] — 2026-08-20
 
 ### Interfaces
