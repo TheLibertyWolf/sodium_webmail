@@ -54,7 +54,7 @@ sodium_render_header('Boîte de réception unifiée');
 ?>
 <div class="mail-page-shell">
     <div class="mail-toolbar">
-        <button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#composeModal"><i class="bi bi-pencil-square"></i> Nouveau message</button>
+        <div class="btn-group" role="group" aria-label="Rédiger un message"><button class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#composeModal"><i class="bi bi-pencil-square"></i> Nouveau message</button><button class="btn btn-danger compose-window-trigger" type="button" data-compose-window title="Rédiger dans une nouvelle fenêtre" aria-label="Rédiger dans une nouvelle fenêtre"><i class="bi bi-window-stack"></i></button></div>
         <form method="post" action="/refresh.php" data-mail-refresh><input type="hidden" name="return_to" value="<?= e($_SERVER['REQUEST_URI'] ?? '/index.php') ?>"><button class="btn btn-outline-secondary" title="Relever le courrier" aria-label="Relever le courrier"><i class="bi bi-arrow-repeat"></i></button></form>
         <form method="get" action="/index.php" class="input-group mail-search">
             <span class="input-group-text"><i class="bi bi-search"></i></span>

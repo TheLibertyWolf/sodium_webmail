@@ -2,6 +2,19 @@
 
 Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichier.
 
+## [1.3.2] — 2026-11-12
+
+### Rédaction et multitâche
+
+- ajout, à côté de « Nouveau message », d’une action rouge ouvrant directement la rédaction dans une fenêtre indépendante ;
+- conservation intégrale de la rédaction lors du passage d’une modal vers un onglet ou une fenêtre dédiée ;
+- après une mise en file d’envoi réussie depuis une rédaction dédiée, l’onglet ou la fenêtre se ferme automatiquement ; en cas d’erreur de validation ou d’envoi, le contenu reste restaurable dans cette même rédaction.
+
+### Dépendances et diffusion
+
+- mise à niveau complète de Bootstrap Icons vers la version 1.13.2, pour les fichiers locaux comme pour le CDN ;
+- renouvellement du cache PWA afin de diffuser immédiatement les styles, icônes et actions de cette version.
+
 ## [1.3.1] — 2026-08-26
 
 ### Navigation et multitâche

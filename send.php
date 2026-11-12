@@ -5,6 +5,12 @@ require_login();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') redirect('/index.php');
 
+$returnTo = (string) ($_POST['return_to'] ?? '/index.php');
+$returnTo = str_starts_with($returnTo, '/') && !str_starts_with($returnTo, '//') ? $returnTo : '/index.php';
+$detachedCompose = (string) ($_POST['detached_compose'] ?? '') === '1';
+$composeTransfer = preg_match('/^[A-Za-z0-9-]{16,128}$/', (string) ($_POST['compose_transfer'] ?? '')) ? (string) $_POST['compose_transfer'] : '';
+$detachedCompletionUrl = $detachedCompose && $composeTransfer !== '' ? '/detached-complete.php?compose_transfer=' . rawurlencode($composeTransfer) : '';
+
 $accountId = (int) ($_POST['mail_account_id'] ?? 0);
 $accounts = sodium_accessible_mail_accounts();
 $account = null;
@@ -16,7 +22,7 @@ foreach ($accounts as $candidate) {
 }
 if (!$account) {
     flash('danger', 'Envoi non autorisé depuis ce compte.');
-    redirect('/index.php');
+    redirect($returnTo);
 }
 
 $parseRecipients = static fn(string $value): array => array_values(array_unique(array_filter(array_map('trim', preg_split('/[,;]+/', $value) ?: []))));
@@ -32,23 +38,23 @@ $sendDelay=max(1,min(60,(int)$userMessageSettings['send_delay']));
 $inReplyTo=preg_match('/^<[^<>\\s]+>$/',(string)($_POST['reply_message_id']??''))?(string)$_POST['reply_message_id']:'';
 if ($composeAction !== 'draft' && (!$recipients || $subject === '' || $content === '')) {
     flash('danger', 'Destinataire, objet et message sont obligatoires.');
-    redirect('/index.php');
+    redirect($returnTo);
 }
 foreach (array_merge($recipients, $cc, $bcc) as $recipient) {
     if (!filter_var($recipient, FILTER_VALIDATE_EMAIL)) {
         flash('danger', 'Adresse destinataire invalide : ' . $recipient);
-        redirect('/index.php');
+        redirect($returnTo);
     }
 }
 
 $attachments=[];$totalSize=0;$temporaryAttachments=[];
-try{$temporaryAttachments=sodium_take_temp_uploads((array)($_POST['attachment_tokens']??[]),(int)current_user()['id']);}catch(Throwable $exception){flash('danger',$exception->getMessage());redirect('/index.php');}
+try{$temporaryAttachments=sodium_take_temp_uploads((array)($_POST['attachment_tokens']??[]),(int)current_user()['id']);}catch(Throwable $exception){flash('danger',$exception->getMessage());redirect($returnTo);}
 foreach($temporaryAttachments as $file){$totalSize+=strlen((string)$file['data']);$attachments[]=$file;}
 if(!empty($_FILES['attachments']['tmp_name'])&&is_array($_FILES['attachments']['tmp_name'])){
     foreach($_FILES['attachments']['tmp_name'] as $index=>$tmp){
         if(!is_uploaded_file($tmp)||($_FILES['attachments']['error'][$index]??UPLOAD_ERR_NO_FILE)!==UPLOAD_ERR_OK)continue;
         $size=(int)($_FILES['attachments']['size'][$index]??0);$totalSize+=$size;
-        if($totalSize>25*1024*1024){flash('danger','Les pièces jointes dépassent 25 Mo.');redirect('/index.php');}
+        if($totalSize>25*1024*1024){flash('danger','Les pièces jointes dépassent 25 Mo.');redirect($returnTo);}
         $attachments[]=['name'=>(string)$_FILES['attachments']['name'][$index],'type'=>(new finfo(FILEINFO_MIME_TYPE))->file($tmp)?:'application/octet-stream','data'=>(string)file_get_contents($tmp)];
     }
 }
@@ -59,11 +65,11 @@ $forwardParts=array_values(array_unique(array_filter((array)($_POST['forward_par
 if($forwardAccountId&&$forwardUid&&$forwardFolder!==''&&$forwardParts){
     $forwardAccount=null;
     foreach($accounts as $candidate)if((int)$candidate['id']===$forwardAccountId){$forwardAccount=$candidate;break;}
-    if(!$forwardAccount||strlen($forwardFolder)>255||preg_match('/[\x00-\x1F\x7F]/',$forwardFolder)){flash('danger','Source du transfert invalide.');redirect('/index.php');}
+    if(!$forwardAccount||strlen($forwardFolder)>255||preg_match('/[\x00-\x1F\x7F]/',$forwardFolder)){flash('danger','Source du transfert invalide.');redirect($returnTo);}
     foreach(array_slice($forwardParts,0,30) as $partNumber){
         try{$file=sodium_fetch_attachment($forwardAccount,$forwardFolder,$forwardUid,$partNumber);}catch(Throwable $exception){error_log('[Sodium forward attachment] '.$exception->getMessage());continue;}
         $size=strlen((string)$file['data']);$totalSize+=$size;
-        if($totalSize>25*1024*1024){flash('danger','Les pièces jointes dépassent 25 Mo.');redirect('/index.php');}
+        if($totalSize>25*1024*1024){flash('danger','Les pièces jointes dépassent 25 Mo.');redirect($returnTo);}
         $subtype=strtolower((string)($file['subtype']??'octet-stream'));
         if($subtype==='jpg')$subtype='jpeg';
         $mime=match((int)($file['type']??TYPEAPPLICATION)){TYPEIMAGE=>'image/'.$subtype,TYPETEXT=>'text/'.$subtype,TYPEAUDIO=>'audio/'.$subtype,TYPEVIDEO=>'video/'.$subtype,TYPEAPPLICATION=>'application/'.$subtype,default=>'application/octet-stream'};
@@ -102,8 +108,6 @@ $body = '<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.5
     . '</div>';
 
 $priority=in_array($_POST['priority']??'',['high','low'],true)?$_POST['priority']:'normal';
-$returnTo = (string) ($_POST['return_to'] ?? '/index.php');
-$returnTo = str_starts_with($returnTo, '/') && !str_starts_with($returnTo, '//') ? $returnTo : '/index.php';
 if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send'){
     $scheduledAt=null;
     if($composeAction==='schedule'){
@@ -136,6 +140,7 @@ if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send
     $removeSourceDraft();
     if($composeAction==='send'){
         sodium_delete_temp_uploads($temporaryAttachments);
+        if($detachedCompletionUrl!=='')redirect($detachedCompletionUrl);
         $_SESSION['sodium_send_now_toast_id']=$queuedMessageId;
         flash('success','Message placé en attente pendant '.$sendDelay.' seconde'.($sendDelay>1?'s':'').'. Vous pouvez encore l’annuler depuis la boîte d’envoi.');
         redirect($returnTo);

@@ -1758,6 +1758,7 @@ body {
 .modal-detach-button + .modal-detach-button { border-left:1px solid var(--bs-border-color); }
 .modal-detach-button:hover,.modal-detach-button:focus-visible { color:var(--bs-primary);background:rgba(var(--bs-primary-rgb),.11);outline:0; }
 .modal-detach-button:active { transform:scale(.92); }
+.compose-window-trigger { border-left-color:rgba(255,255,255,.45) !important; }
 
 .reader-avatar {
     width: 42px;

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const SODIUM_VERSION = '1.3.1';
+const SODIUM_VERSION = '1.3.2';
 const SODIUM_UPDATE_REPOSITORY = 'TheLibertyWolf/sodium_webmail';
 
 function sodium_update_status(bool $force=false): array
