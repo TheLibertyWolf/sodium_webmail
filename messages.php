@@ -7,7 +7,7 @@ require_once __DIR__ . '/includes/layout.php';
 
 $canManage = sodium_can('sodium_settings_manage');
 $currentUserId=(int)(current_user()['id']??0);
-$allowedIntervals = [1,5,8,10,15,30,60];
+$allowedIntervals = [15,30,60,300,480,600,900,1800,3600];
 $allowedSendDelays = [1,3,5,10,15,30,60];
 $messageAccounts=sodium_accessible_mail_accounts();
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -45,8 +45,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         flash('success','Réponse automatique enregistrée.');
         redirect('/messages.php');
     }
-    $interval = (int)($_POST['refresh_interval'] ?? 1);
-    if (!in_array($interval, $allowedIntervals, true)) $interval = 1;
+    $intervalSeconds = (int)($_POST['refresh_interval_seconds'] ?? 60);
+    if (!in_array($intervalSeconds, $allowedIntervals, true)) $intervalSeconds = 60;
+    $legacyInterval=max(1,(int)round($intervalSeconds/60));
     $sendDelay=(int)($_POST['send_delay']??10);
     if(!in_array($sendDelay,$allowedSendDelays,true))$sendDelay=10;
     $quoteReply = !empty($_POST['quote_reply']) ? 1 : 0;
@@ -56,10 +57,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $sendAccountIds=array_map('intval',array_column(array_values(array_filter($messageAccounts,static fn(array $account):bool=>!empty($account['can_send']))),'id'));
     $defaultComposeAccountId=(int)($_POST['default_compose_account_id']??0);
     if(!in_array($defaultComposeAccountId,$sendAccountIds,true))$defaultComposeAccountId=0;
-    $pdo->prepare('INSERT INTO sodium_user_settings (user_id,refresh_interval,send_delay,quote_reply,signature_position,default_compose_account_id)
-        VALUES (?,?,?,?,?,?) ON DUPLICATE KEY UPDATE refresh_interval=VALUES(refresh_interval),send_delay=VALUES(send_delay),
-        quote_reply=VALUES(quote_reply),signature_position=VALUES(signature_position),default_compose_account_id=VALUES(default_compose_account_id),updated_at=NOW()')
-        ->execute([$currentUserId,$interval,$sendDelay,$quoteReply,$signaturePosition,$defaultComposeAccountId?:null]);
+    $notificationDetail=in_array((string)($_POST['notification_detail']??''),['detailed','discreet','confidential'],true)?(string)$_POST['notification_detail']:'detailed';
+    $pdo->prepare('INSERT INTO sodium_user_settings (user_id,refresh_interval,refresh_interval_seconds,send_delay,quote_reply,signature_position,default_compose_account_id,notification_detail)
+        VALUES (?,?,?,?,?,?,?,?) ON DUPLICATE KEY UPDATE refresh_interval=VALUES(refresh_interval),refresh_interval_seconds=VALUES(refresh_interval_seconds),send_delay=VALUES(send_delay),
+        quote_reply=VALUES(quote_reply),signature_position=VALUES(signature_position),default_compose_account_id=VALUES(default_compose_account_id),notification_detail=VALUES(notification_detail),updated_at=NOW()')
+        ->execute([$currentUserId,$legacyInterval,$intervalSeconds,$sendDelay,$quoteReply,$signaturePosition,$defaultComposeAccountId?:null,$notificationDetail]);
     flash('success', 'Préférences de messages enregistrées.');
     redirect('/messages.php');
 }
@@ -80,10 +82,17 @@ sodium_render_header('Messages');
             <h3 class="h6 mb-1"><i class="bi bi-arrow-repeat me-2"></i>Réception du courrier</h3>
             <p class="text-muted mb-3">Actualisation automatique tant que Sodium est ouvert.</p>
             <label class="form-label" for="refreshInterval">Délai de relève du courrier</label>
-            <select class="form-select" id="refreshInterval" name="refresh_interval" <?= $canManage?'':'disabled' ?>>
-                <?php foreach($allowedIntervals as $minutes): ?><option value="<?= $minutes ?>" <?= (int)$settings['refresh_interval']===$minutes?'selected':'' ?>><?= $minutes ?> minute<?= $minutes>1?'s':'' ?></option><?php endforeach; ?>
+            <select class="form-select" id="refreshInterval" name="refresh_interval_seconds" <?= $canManage?'':'disabled' ?>>
+                <?php foreach($allowedIntervals as $seconds): $intervalLabel=$seconds<60?$seconds.' secondes':($seconds/60).' minute'.($seconds>60?'s':''); ?><option value="<?= $seconds ?>" <?= (int)$settings['refresh_interval_seconds']===$seconds?'selected':'' ?>><?= $intervalLabel ?></option><?php endforeach; ?>
             </select>
             <div class="form-text">Les nouveaux messages actualisent les compteurs et peuvent déclencher une notification système.</div>
+            <label class="form-label mt-3" for="notificationDetail">Contenu des notifications</label>
+            <select class="form-select" id="notificationDetail" name="notification_detail" <?= $canManage?'':'disabled' ?>>
+                <option value="detailed" <?= $settings['notification_detail']==='detailed'?'selected':'' ?>>Détaillées — objet, expéditeur et adresse de réception</option>
+                <option value="discreet" <?= $settings['notification_detail']==='discreet'?'selected':'' ?>>Discrètes — nombre de messages et compte mail</option>
+                <option value="confidential" <?= $settings['notification_detail']==='confidential'?'selected':'' ?>>Confidentielles — aucun détail du message</option>
+            </select>
+            <div class="form-text">Le mode confidentiel protège le contenu affiché sur l’écran verrouillé.</div>
         </div>
         <div class="p-4 border-bottom">
             <h3 class="h6 mb-1"><i class="bi bi-send me-2"></i>Envoi</h3>

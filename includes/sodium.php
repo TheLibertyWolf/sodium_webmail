@@ -108,6 +108,9 @@ function sodium_ensure_schema(): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     sodium_ensure_column('sodium_user_settings', 'send_delay', 'SMALLINT UNSIGNED NOT NULL DEFAULT 10');
     sodium_ensure_column('sodium_user_settings', 'default_compose_account_id', 'INT UNSIGNED NULL');
+    sodium_ensure_column('sodium_user_settings', 'notification_detail', "VARCHAR(20) NOT NULL DEFAULT 'detailed'");
+    sodium_ensure_column('sodium_user_settings', 'refresh_interval_seconds', 'SMALLINT UNSIGNED NULL');
+    $pdo->exec('UPDATE sodium_user_settings SET refresh_interval_seconds=GREATEST(15,refresh_interval*60) WHERE refresh_interval_seconds IS NULL');
 
     sodium_ensure_column('sodium_mail_accounts', 'password_cipher', 'TEXT NULL');
     sodium_ensure_column('sodium_mail_accounts', 'label_text', "VARCHAR(60) NOT NULL DEFAULT ''");
@@ -210,6 +213,16 @@ function sodium_ensure_schema(): void
     sodium_ensure_column('sodium_message_replies', 'subject', "VARCHAR(998) NOT NULL DEFAULT ''");
     sodium_ensure_column('sodium_message_replies', 'content_html', 'LONGTEXT NULL');
 
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_message_forwards (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        mail_account_id INT UNSIGNED NOT NULL,
+        source_message_key CHAR(64) NOT NULL,
+        user_id INT NOT NULL,
+        forwarded_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sodium_forwards_message (mail_account_id, source_message_key),
+        INDEX idx_sodium_forwards_user (user_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_message_list_cache (
         mail_account_id INT UNSIGNED NOT NULL,
         message_key CHAR(64) NOT NULL,
@@ -249,7 +262,7 @@ function sodium_ensure_schema(): void
         id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         mail_account_id INT UNSIGNED NOT NULL,
-        status ENUM('draft','scheduled','sent','failed') NOT NULL DEFAULT 'draft',
+        status ENUM('draft','scheduled','sending','sent','failed') NOT NULL DEFAULT 'draft',
         to_json LONGTEXT NOT NULL,
         cc_json LONGTEXT NOT NULL,
         bcc_json LONGTEXT NOT NULL,
@@ -268,10 +281,16 @@ function sodium_ensure_schema(): void
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
     sodium_ensure_column('sodium_composed_messages', 'reply_account_id', 'INT UNSIGNED NULL');
     sodium_ensure_column('sodium_composed_messages', 'reply_message_key', 'CHAR(64) NULL');
+    sodium_ensure_column('sodium_composed_messages', 'source_action', "VARCHAR(10) NOT NULL DEFAULT 'reply'");
     sodium_ensure_column('sodium_composed_messages', 'in_reply_to', 'VARCHAR(998) NULL');
     sodium_ensure_column('sodium_composed_messages', 'undo_until', 'DATETIME NULL');
     sodium_ensure_column('sodium_composed_messages', 'edit_original_scheduled_at', 'DATETIME NULL');
     sodium_ensure_column('sodium_composed_messages', 'edit_original_undo_until', 'DATETIME NULL');
+    $composedStatusStmt = $pdo->prepare("SELECT COLUMN_TYPE FROM information_schema.COLUMNS WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME='sodium_composed_messages' AND COLUMN_NAME='status'");
+    $composedStatusStmt->execute();
+    if (!str_contains((string) $composedStatusStmt->fetchColumn(), "'sending'")) {
+        $pdo->exec("ALTER TABLE sodium_composed_messages MODIFY status ENUM('draft','scheduled','sending','sent','failed') NOT NULL DEFAULT 'draft'");
+    }
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_temp_uploads (
         token CHAR(64) PRIMARY KEY,
@@ -341,6 +360,17 @@ function sodium_ensure_schema(): void
         created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         INDEX idx_sodium_push_user (user_id,enabled)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+    $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_push_notifications (
+        id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        body VARCHAR(998) NOT NULL,
+        account_line VARCHAR(255) NOT NULL DEFAULT '',
+        target_url VARCHAR(998) NOT NULL DEFAULT '/index.php',
+        created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_sodium_push_notification_user (user_id,created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
     $pdo->exec("CREATE TABLE IF NOT EXISTS sodium_instance_settings(setting_key VARCHAR(100) PRIMARY KEY,setting_value TEXT NULL,updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
@@ -559,9 +589,9 @@ function sodium_user_settings(?int $userId = null): array
     global $pdo;
     sodium_ensure_schema();
     $userId ??= (int)(current_user()['id'] ?? 0);
-    $defaults = ['refresh_interval'=>1, 'send_delay'=>10, 'quote_reply'=>1, 'signature_position'=>'before_quote', 'default_compose_account_id'=>0];
+    $defaults = ['refresh_interval'=>1, 'refresh_interval_seconds'=>60, 'send_delay'=>10, 'quote_reply'=>1, 'signature_position'=>'before_quote', 'default_compose_account_id'=>0, 'notification_detail'=>'detailed'];
     if (!$userId) return $defaults;
-    $stmt = $pdo->prepare('SELECT refresh_interval,send_delay,quote_reply,signature_position,default_compose_account_id FROM sodium_user_settings WHERE user_id=?');
+    $stmt = $pdo->prepare('SELECT refresh_interval,refresh_interval_seconds,send_delay,quote_reply,signature_position,default_compose_account_id,notification_detail FROM sodium_user_settings WHERE user_id=?');
     $stmt->execute([$userId]);
     $settings = $stmt->fetch();
     return $settings ? array_merge($defaults, $settings) : $defaults;
@@ -642,6 +672,18 @@ function sodium_folder_display_label(string $key): string
         'archive','archives'=>'Archives',
         default=>$label,
     };
+}
+
+function sodium_folder_is_protected(string $key): bool
+{
+    if(strcasecmp($key,'INBOX')===0)return true;
+    $leaf=preg_replace('~^.*[./]~','',$key)??$key;
+    try{$leaf=mb_convert_encoding($leaf,'UTF-8','UTF7-IMAP');}catch(Throwable){}
+    return in_array(mb_strtolower(trim($leaf)),[
+        'sent','sent mail','sent items','sent messages','envoyé','envoyés','éléments envoyés',
+        'archive','archives','trash','deleted','deleted items','deleted messages','corbeille','éléments supprimés',
+        'junk','junk e-mail','junk mail','spam','indésirable','indésirables','courrier indésirable',
+    ],true);
 }
 
 function sodium_sort_folders(array $folders): array
@@ -927,11 +969,14 @@ function sodium_fetch_messages(array $account, string $folder, int $limit = 80, 
             $toRaw = (string)($item->to ?? '');
             $ccRaw = (string)($item->cc ?? '');
             $bccRaw = (string)($item->bcc ?? '');
-            if ($isSentFolder && ($toRaw === '' || $bccRaw === '')) {
+            if ($isSentFolder) {
                 $rawHeaders = (string)(@imap_fetchheader($stream, (int)($item->uid ?? 0), FT_UID) ?: '');
-                if ($toRaw === '') $toRaw = sodium_raw_header_value($rawHeaders, 'To');
-                if ($ccRaw === '') $ccRaw = sodium_raw_header_value($rawHeaders, 'Cc');
-                if ($bccRaw === '') $bccRaw = sodium_raw_header_value($rawHeaders, 'Bcc');
+                $headerTo=sodium_raw_header_value($rawHeaders,'To');
+                $headerCc=sodium_raw_header_value($rawHeaders,'Cc');
+                $headerBcc=sodium_raw_header_value($rawHeaders,'Bcc');
+                if($headerTo!=='')$toRaw=$headerTo;
+                if($headerCc!=='')$ccRaw=$headerCc;
+                if($headerBcc!=='')$bccRaw=$headerBcc;
             }
             $subject = sodium_message_subject((string) ($item->subject ?? ''));
             $messageId = trim((string) ($item->message_id ?? ''));
@@ -1094,10 +1139,43 @@ function sodium_send_web_push_to_user(int $userId): int
     return $sent;
 }
 
+function sodium_latest_unread_notification_messages(array $account, int $limit=3): array
+{
+    $stream=sodium_imap_open_account($account,'INBOX');
+    try{
+        $uids=@imap_sort($stream,SORTDATE,true,SE_UID,'UNSEEN')?:[];
+        $uids=array_slice(array_values(array_map('intval',$uids)),0,max(1,min(10,$limit)));
+        if(!$uids)return[];
+        $overviews=@imap_fetch_overview($stream,implode(',',$uids),FT_UID)?:[];$messages=[];
+        foreach($overviews as $overview){
+            $fromRaw=(string)($overview->from??'');$addresses=sodium_parse_email_addresses($fromRaw);$address=$addresses[0]??[];
+            $sender=trim((string)($address['name']??''));
+            if($sender==='')$sender=trim((string)($address['email']??''));
+            if($sender==='')$sender=trim(sodium_decode_mime_header($fromRaw))?:'Expéditeur inconnu';
+            $messages[]=['sender'=>$sender,'subject'=>sodium_message_subject((string)($overview->subject??'')),'account_id'=>(int)$account['id'],'account_email'=>(string)($account['email_address']??''),'account_label'=>(string)($account['label_text']?:($account['display_name']?:$account['email_address'])),'uid'=>(int)($overview->uid??0)];
+        }
+        usort($messages,static fn(array $a,array $b):int=>$b['uid']<=>$a['uid']);return$messages;
+    }finally{imap_close($stream);}
+}
+
+function sodium_format_new_mail_notification(int $count, array $messages, array $accountLabels=[], string $detail='detailed'): array
+{
+    $count=max(1,$count);$accountLabels=array_values(array_unique(array_filter(array_map('strval',$accountLabels))));
+    if($detail==='confidential')return['title'=>'Sodium — Nouveau courrier','body'=>'Nouveau courrier reçu','account_line'=>'','url'=>'/index.php'];
+    if($detail==='discreet'){$accountLine=count($accountLabels)>1?'Sur '.count($accountLabels).' comptes mails':(!empty($accountLabels[0])?'Compte : '.$accountLabels[0]:'');return['title'=>$count.' nouveau'.($count>1?'x':'').' message'.($count>1?'s':''),'body'=>'Du nouveau courrier a été reçu.','account_line'=>$accountLine,'url'=>'/index.php'];}
+    if(!empty($messages[0])){$message=$messages[0];$subject=trim((string)($message['subject']??''));$sender=trim((string)($message['sender']??''));$account=trim((string)($message['account_email']??''));if($subject==='')$subject='(pas d’objet)';if($sender==='')$sender='Expéditeur inconnu';if($account==='')$account=trim((string)($message['account_label']??($accountLabels[0]??'')));return['title'=>$subject,'body'=>$sender,'account_line'=>$account!==''?'Compte : '.$account:'','url'=>'/mailbox.php?account_id='.(int)($message['account_id']??0).'&folder=INBOX&open_uid='.(int)($message['uid']??0)];}
+    $senders=[];foreach($messages as $message){$sender=trim((string)($message['sender']??''));if($sender!==''&&!in_array($sender,$senders,true))$senders[]=$sender;}$body=$senders?implode(', ',array_slice($senders,0,3)):'Nouveaux messages reçus';if(count($senders)>3)$body.=' et '.(count($senders)-3).' autre'.(count($senders)-3>1?'s':'');$accountLine=count($accountLabels)>1?'Sur '.count($accountLabels).' comptes mails':(!empty($accountLabels[0])?'Compte : '.$accountLabels[0]:'');return['title'=>$count.' nouveaux messages','body'=>$body,'account_line'=>$accountLine,'url'=>'/index.php'];
+}
+
+function sodium_store_push_notification(int $userId, array $notification): int
+{
+    global $pdo;$pdo->prepare('INSERT INTO sodium_push_notifications(user_id,title,body,account_line,target_url) VALUES(?,?,?,?,?)')->execute([$userId,mb_substr((string)$notification['title'],0,255),mb_substr((string)$notification['body'],0,998),mb_substr((string)($notification['account_line']??''),0,255),mb_substr((string)($notification['url']??'/index.php'),0,998)]);if(random_int(1,100)===1)$pdo->exec('DELETE FROM sodium_push_notifications WHERE created_at<DATE_SUB(NOW(),INTERVAL 7 DAY)');return(int)$pdo->lastInsertId();
+}
+
 function sodium_refresh_accounts_and_push(): array
 {
     global $pdo;
-    $result=['accounts'=>0,'new_messages'=>0,'pushes'=>0];
+    $result=['accounts'=>0,'new_messages'=>0,'pushes'=>0];$pendingByUser=[];
     if(!(int)$pdo->query("SELECT GET_LOCK('sodium_background_refresh',0)")->fetchColumn())return $result;
     try{
         $accounts=$pdo->query("SELECT * FROM sodium_mail_accounts WHERE account_status='active' AND password_cipher IS NOT NULL AND password_cipher<>''")->fetchAll();
@@ -1108,13 +1186,14 @@ function sodium_refresh_accounts_and_push(): array
                 sodium_process_auto_replies($fresh);
                 $after=(int)$fresh['unread_count'];$result['accounts']++;
                 if($after>$before){
-                    $result['new_messages']+=($after-$before);
+                    $delta=$after-$before;$result['new_messages']+=$delta;try{$messages=sodium_latest_unread_notification_messages($fresh,min(3,$delta));}catch(Throwable){$messages=[];}$accountLabel=(string)($fresh['label_text']?:($fresh['display_name']?:$fresh['email_address']));
                     $users=$pdo->prepare('SELECT DISTINCT user_id FROM sodium_user_mail_accounts WHERE mail_account_id=? AND can_read=1');
                     $users->execute([(int)$account['id']]);
-                    foreach($users->fetchAll(PDO::FETCH_COLUMN) as $userId)$result['pushes']+=sodium_send_web_push_to_user((int)$userId);
+                    foreach($users->fetchAll(PDO::FETCH_COLUMN) as $userId){$userId=(int)$userId;$pendingByUser[$userId]['count']=($pendingByUser[$userId]['count']??0)+$delta;$pendingByUser[$userId]['messages']=array_merge($pendingByUser[$userId]['messages']??[],$messages);$pendingByUser[$userId]['accounts'][$accountLabel]=true;}
                 }
             }catch(Throwable $exception){error_log('[Sodium background refresh] account='.(int)$account['id'].' '.$exception->getMessage());}
         }
+        foreach($pendingByUser as $userId=>$pending){$detail=(string)(sodium_user_settings((int)$userId)['notification_detail']??'detailed');$notification=sodium_format_new_mail_notification((int)$pending['count'],(array)$pending['messages'],array_keys((array)$pending['accounts']),$detail);sodium_store_push_notification((int)$userId,$notification);$result['pushes']+=sodium_send_web_push_to_user((int)$userId);}
     }finally{$pdo->query("SELECT RELEASE_LOCK('sodium_background_refresh')");}
     return $result;
 }
@@ -1182,6 +1261,12 @@ function sodium_message_metadata(array $messages): array
         foreach ($stmt->fetchAll() as $row) {
             $name = trim(($row['first_name'] ?? '').' '.($row['last_name'] ?? '')) ?: $row['username'];
             $metadata[$accountId][$row['source_message_key']]['replies'][] = ['name'=>$name,'date'=>$row['replied_at']];
+        }
+        $stmt = $pdo->prepare("SELECT f.source_message_key,f.forwarded_at,u.first_name,u.last_name,u.username FROM sodium_message_forwards f INNER JOIN users u ON u.id=f.user_id WHERE f.mail_account_id=? AND f.source_message_key IN ($placeholders) ORDER BY f.forwarded_at DESC");
+        $stmt->execute(array_merge([$accountId], $keys));
+        foreach ($stmt->fetchAll() as $row) {
+            $name = trim(($row['first_name'] ?? '').' '.($row['last_name'] ?? '')) ?: $row['username'];
+            $metadata[$accountId][$row['source_message_key']]['forwards'][] = ['name'=>$name,'date'=>$row['forwarded_at']];
         }
     }
     return $metadata;
@@ -1475,6 +1560,92 @@ function sodium_fetch_attachment(array $account, string $folder, int $uid, strin
     }
 }
 
+function sodium_stream_write_all($stream, string $data): void
+{
+    $length = strlen($data);
+    for ($written = 0; $written < $length;) {
+        $chunk = fwrite($stream, substr($data, $written));
+        if ($chunk === false || $chunk === 0) throw new RuntimeException('Écriture du message interrompue.');
+        $written += $chunk;
+    }
+}
+
+function sodium_mime_write_base64($stream, array $attachment): void
+{
+    if (!empty($attachment['path'])) {
+        $input = @fopen((string) $attachment['path'], 'rb');
+        if (!$input) throw new RuntimeException('Pièce jointe temporaire introuvable : ' . (string) ($attachment['name'] ?? 'fichier'));
+        try {
+            while (!feof($input)) {
+                $binary = fread($input, 57 * 1024);
+                if ($binary === false) throw new RuntimeException('Lecture de la pièce jointe interrompue.');
+                if ($binary !== '') sodium_stream_write_all($stream, chunk_split(base64_encode($binary), 76, "\r\n"));
+            }
+        } finally {
+            fclose($input);
+        }
+        return;
+    }
+    if (array_key_exists('base64', $attachment)) {
+        $encoded = (string) $attachment['base64'];
+        $length = strlen($encoded);
+        for ($offset = 0; $offset < $length; $offset += 76) sodium_stream_write_all($stream, substr($encoded, $offset, 76) . "\r\n");
+        return;
+    }
+    $binary = (string) ($attachment['data'] ?? '');
+    $length = strlen($binary);
+    for ($offset = 0; $offset < $length; $offset += 57 * 1024) sodium_stream_write_all($stream, chunk_split(base64_encode(substr($binary, $offset, 57 * 1024)), 76, "\r\n"));
+}
+
+function sodium_build_mime_stream(array $headers, string $plainText, string $html, array $attachments)
+{
+    $stream = tmpfile();
+    if (!$stream) throw new RuntimeException('Impossible de préparer le message temporaire.');
+    try {
+        $alternativeBoundary = 'sodium_alt_' . bin2hex(random_bytes(12));
+        if ($attachments) {
+            $mixedBoundary = 'sodium_' . bin2hex(random_bytes(16));
+            $headers[] = 'Content-Type: multipart/mixed; boundary="' . $mixedBoundary . '"';
+        } else {
+            $mixedBoundary = '';
+            $headers[] = 'Content-Type: multipart/alternative; boundary="' . $alternativeBoundary . '"';
+        }
+        sodium_stream_write_all($stream, implode("\r\n", $headers) . "\r\n\r\n");
+        if ($mixedBoundary !== '') sodium_stream_write_all($stream, '--' . $mixedBoundary . "\r\nContent-Type: multipart/alternative; boundary=\"" . $alternativeBoundary . "\"\r\n\r\n");
+        sodium_stream_write_all($stream, '--' . $alternativeBoundary . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n");
+        sodium_stream_write_all($stream, chunk_split(base64_encode($plainText), 76, "\r\n"));
+        sodium_stream_write_all($stream, '--' . $alternativeBoundary . "\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n");
+        sodium_stream_write_all($stream, chunk_split(base64_encode($html), 76, "\r\n"));
+        sodium_stream_write_all($stream, '--' . $alternativeBoundary . "--\r\n");
+        if ($mixedBoundary !== '') {
+            foreach ($attachments as $attachment) {
+                $filename = str_replace(["\r", "\n", '"'], '', (string) ($attachment['name'] ?? 'piece-jointe'));
+                $mime = preg_match('#^[a-z0-9.+-]+/[a-z0-9.+-]+$#i', (string) ($attachment['type'] ?? '')) ? (string) $attachment['type'] : 'application/octet-stream';
+                sodium_stream_write_all($stream, '--' . $mixedBoundary . "\r\nContent-Type: " . $mime . '; name="' . $filename . "\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"" . $filename . "\"\r\n\r\n");
+                sodium_mime_write_base64($stream, $attachment);
+            }
+            sodium_stream_write_all($stream, '--' . $mixedBoundary . "--\r\n");
+        }
+        rewind($stream);
+        return $stream;
+    } catch (Throwable $exception) {
+        fclose($stream);
+        throw $exception;
+    }
+}
+
+function sodium_smtp_send_stream($socket, $messageStream): void
+{
+    rewind($messageStream);
+    while (($line = fgets($messageStream, 8192)) !== false) {
+        if (str_starts_with($line, '.')) $line = '.' . $line;
+        sodium_stream_write_all($socket, $line);
+    }
+    sodium_stream_write_all($socket, ".\r\n");
+    $reply = mail_smtp_read($socket);
+    if ((int) substr($reply, 0, 3) !== 250) throw new RuntimeException('Réponse SMTP inattendue : ' . trim($reply));
+}
+
 function sodium_send_smtp_message(array $account, array $to, array $cc, array $bcc, string $subject, string $html, array $attachments = [], string $priority = 'normal', string $senderName = '', string $inReplyTo = ''): void
 {
     $host = trim((string) $account['smtp_host']);
@@ -1534,38 +1705,17 @@ function sodium_send_smtp_message(array $account, array $to, array $cc, array $b
         if ($priority === 'high') { $headers[]='X-Priority: 1'; $headers[]='Importance: high'; }
         if ($priority === 'low') { $headers[]='X-Priority: 5'; $headers[]='Importance: low'; }
         $plainText = trim(html_entity_decode(strip_tags(preg_replace('/<(br|\/p|\/div|\/li)>/i', "\n", $html) ?? $html), ENT_QUOTES | ENT_HTML5, 'UTF-8'));
-        $plainEncoded=rtrim(chunk_split(base64_encode($plainText),76,"\r\n"));
-        $htmlEncoded=rtrim(chunk_split(base64_encode($html),76,"\r\n"));
-        $alternativeBoundary = 'sodium_alt_' . bin2hex(random_bytes(12));
-        $alternativeBody = '--' . $alternativeBoundary . "\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $plainEncoded . "\r\n"
-            . '--' . $alternativeBoundary . "\r\nContent-Type: text/html; charset=UTF-8\r\nContent-Transfer-Encoding: base64\r\n\r\n" . $htmlEncoded . "\r\n"
-            . '--' . $alternativeBoundary . "--\r\n";
-        if ($attachments) {
-            $boundary='sodium_'.bin2hex(random_bytes(16));
-            $headers[]='Content-Type: multipart/mixed; boundary="'.$boundary.'"';
-            $body='--'.$boundary."\r\nContent-Type: multipart/alternative; boundary=\"".$alternativeBoundary."\"\r\n\r\n".$alternativeBody;
-            foreach($attachments as $attachment){
-                $filename=str_replace(["\r","\n",'"'],'',(string)$attachment['name']);
-                $body.='--'.$boundary."\r\nContent-Type: ".($attachment['type']?:'application/octet-stream').'; name="'.$filename."\"\r\nContent-Transfer-Encoding: base64\r\nContent-Disposition: attachment; filename=\"".$filename."\"\r\n\r\n".chunk_split(base64_encode($attachment['data']))."\r\n";
-            }
-            $body.='--'.$boundary."--\r\n";
-            $message=implode("\r\n",$headers)."\r\n\r\n".$body;
-        } else {
-            $headers[]='Content-Type: multipart/alternative; boundary="'.$alternativeBoundary.'"';
-            $message=implode("\r\n",$headers)."\r\n\r\n".$alternativeBody;
-        }
-        mail_smtp_cmd($socket, mail_smtp_data_escape($message) . "\r\n.", [250]);
-        mail_smtp_cmd($socket, 'QUIT', [221]);
+        $messageStream = sodium_build_mime_stream($headers, $plainText, $html, $attachments);
         try {
-            $sentFolder=sodium_system_folder($account,'sent');
-            $imap=sodium_imap_open_account($account,$sentFolder);
+            sodium_smtp_send_stream($socket, $messageStream);
+            mail_smtp_cmd($socket, 'QUIT', [221]);
             try {
-                if(!@imap_append($imap,sodium_imap_mailbox($account,$sentFolder),$message,"\\Seen")) {
-                    throw new RuntimeException('Copie IMAP refusée.');
-                }
-            } finally { imap_close($imap); }
-        } catch(Throwable $appendException) {
-            error_log('[Sodium sent copy] account='.(int)($account['id']??0).' '.$appendException->getMessage());
+                $sentFolder=sodium_system_folder($account,'sent');$imap=sodium_imap_open_account($account,$sentFolder);
+                try { rewind($messageStream);$message=stream_get_contents($messageStream);if($message===false||!@imap_append($imap,sodium_imap_mailbox($account,$sentFolder),$message,"\\Seen"))throw new RuntimeException('Copie IMAP refusée.'); }
+                finally { imap_close($imap); }
+            } catch(Throwable $appendException) { error_log('[Sodium sent copy] account='.(int)($account['id']??0).' '.$appendException->getMessage()); }
+        } finally {
+            fclose($messageStream);
         }
     } finally {
         fclose($socket);
@@ -1578,22 +1728,18 @@ function sodium_process_scheduled_messages(int $limit = 20): array
     sodium_ensure_schema();
     $result = ['sent'=>0,'failed'=>0];
     $limit = max(1,min(100,$limit));
-    $stmt=$pdo->query("SELECT m.*,a.*,m.id composed_id,m.user_id composed_user_id,m.content_html composed_content_html
-        FROM sodium_composed_messages m
-        INNER JOIN sodium_mail_accounts a ON a.id=m.mail_account_id
-        WHERE m.status='scheduled' AND m.scheduled_at<=NOW() AND a.account_status='active'
-        ORDER BY m.scheduled_at,m.id LIMIT ".$limit);
-    foreach($stmt->fetchAll() as $message){
-        $id=(int)$message['composed_id'];
+    $pdo->exec("UPDATE sodium_composed_messages SET status='failed',last_error='Envoi interrompu avant sa finalisation.' WHERE status='sending' AND updated_at<DATE_SUB(NOW(),INTERVAL 10 MINUTE)");
+    $stmt=$pdo->query("SELECT m.id FROM sodium_composed_messages m INNER JOIN sodium_mail_accounts a ON a.id=m.mail_account_id WHERE m.status='scheduled' AND m.scheduled_at<=NOW() AND a.account_status='active' ORDER BY m.scheduled_at,m.id LIMIT ".$limit);
+    foreach(array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN)) as $id){
+        $claim=$pdo->prepare("UPDATE sodium_composed_messages SET status='sending',last_error=NULL WHERE id=? AND status='scheduled' AND scheduled_at<=NOW()");$claim->execute([$id]);if(!$claim->rowCount())continue;
         try{
+            $messageStmt=$pdo->prepare("SELECT m.*,a.*,m.id composed_id,m.user_id composed_user_id,m.content_html composed_content_html FROM sodium_composed_messages m INNER JOIN sodium_mail_accounts a ON a.id=m.mail_account_id WHERE m.id=? AND m.status='sending'");$messageStmt->execute([$id]);$message=$messageStmt->fetch();if(!$message)throw new RuntimeException('Message réservé introuvable.');
             $to=json_decode((string)$message['to_json'],true)?:[];
             $cc=json_decode((string)$message['cc_json'],true)?:[];
             $bcc=json_decode((string)$message['bcc_json'],true)?:[];
             $stored=json_decode((string)($message['attachments_json']??''),true)?:[];
             $attachments=[];
-            foreach($stored as $file){
-                $attachments[]=['name'=>(string)($file['name']??'piece-jointe'),'type'=>(string)($file['type']??'application/octet-stream'),'data'=>(string)base64_decode((string)($file['data']??''),true)];
-            }
+            foreach($stored as $file)$attachments[]=['name'=>(string)($file['name']??'piece-jointe'),'type'=>(string)($file['type']??'application/octet-stream'),'base64'=>(string)($file['data']??'')];
             $userStmt=$pdo->prepare('SELECT first_name,last_name,username FROM users WHERE id=?');
             $userStmt->execute([(int)$message['composed_user_id']]);$sender=$userStmt->fetch()?:[];
             $senderName=trim((string)($sender['first_name']??'').' '.(string)($sender['last_name']??''))?:((string)($sender['username']??''));
@@ -1605,10 +1751,16 @@ function sodium_process_scheduled_messages(int $limit = 20): array
             }
             $body='<div style="font-family:Arial,sans-serif;font-size:15px;line-height:1.55;color:#1f2937">'.sodium_sanitize_email_html((string)$message['composed_content_html']).'</div>';
             sodium_send_smtp_message($message,$to,$cc,$bcc,(string)$message['subject'],$body,$attachments,(string)$message['priority'],$senderName,(string)($message['in_reply_to']??''));
-            $pdo->prepare("UPDATE sodium_composed_messages SET status='sent',sent_at=NOW(),last_error=NULL WHERE id=? AND status='scheduled'")->execute([$id]);
-            if((int)($message['reply_account_id']??0)===(int)$message['mail_account_id']&&preg_match('/^[a-f0-9]{64}$/',(string)($message['reply_message_key']??''))){
-                $pdo->prepare('INSERT INTO sodium_message_replies (mail_account_id,source_message_key,user_id,subject,content_html,replied_at) VALUES (?,?,?,?,?,NOW())')
-                    ->execute([(int)$message['mail_account_id'],(string)$message['reply_message_key'],(int)$message['composed_user_id'],(string)$message['subject'],$body]);
+            $pdo->prepare("UPDATE sodium_composed_messages SET status='sent',sent_at=NOW(),last_error=NULL WHERE id=? AND status='sending'")->execute([$id]);
+            $sourceAccountId=(int)($message['reply_account_id']??0);$sourceMessageKey=(string)($message['reply_message_key']??'');
+            if($sourceAccountId>0&&preg_match('/^[a-f0-9]{64}$/',$sourceMessageKey)){
+                if(($message['source_action']??'reply')==='forward'){
+                    $pdo->prepare('INSERT INTO sodium_message_forwards (mail_account_id,source_message_key,user_id,forwarded_at) VALUES (?,?,?,NOW())')
+                        ->execute([$sourceAccountId,$sourceMessageKey,(int)$message['composed_user_id']]);
+                }elseif($sourceAccountId===(int)$message['mail_account_id']){
+                    $pdo->prepare('INSERT INTO sodium_message_replies (mail_account_id,source_message_key,user_id,subject,content_html,replied_at) VALUES (?,?,?,?,?,NOW())')
+                        ->execute([(int)$message['mail_account_id'],$sourceMessageKey,(int)$message['composed_user_id'],(string)$message['subject'],$body]);
+                }
             }
             $result['sent']++;
         }catch(Throwable $exception){

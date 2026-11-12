@@ -9,6 +9,7 @@ $forceRefresh = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && ($_POST['ref
 $result = [];
 $total = 0;
 $newMessages=0;
+$newMessageDetails=[];$newMessageAccounts=[];
 foreach ($accounts as $account) {
     $before=(int)($account['unread_count']??0);
     if (!empty($account['password_cipher'])) {
@@ -16,7 +17,7 @@ foreach ($accounts as $account) {
         if($forceRefresh)sodium_process_auto_replies($account);
     }
     $unread = (int) ($account['unread_count'] ?? 0);
-    if($forceRefresh)$newMessages+=max(0,$unread-$before);
+    if($forceRefresh){$delta=max(0,$unread-$before);$newMessages+=$delta;if($delta>0){try{$newMessageDetails=array_merge($newMessageDetails,sodium_latest_unread_notification_messages($account,min(3,$delta)));}catch(Throwable){}$newMessageAccounts[]=(string)($account['label_text']?:($account['display_name']?:$account['email_address']));}}
     $total += $unread;
     $result[] = [
         'id' => (int) $account['id'],
@@ -29,4 +30,5 @@ foreach ($accounts as $account) {
 }
 $accountIds=array_map('intval',array_column($accounts,'id'));$outboxCount=0;
 if($accountIds){$stmt=$pdo->prepare("SELECT COUNT(*) FROM sodium_composed_messages WHERE user_id=? AND status='scheduled' AND mail_account_id IN (".implode(',',array_fill(0,count($accountIds),'?')).')');$stmt->execute(array_merge([(int)current_user()['id']],$accountIds));$outboxCount=(int)$stmt->fetchColumn();}
-echo json_encode(['unified_unread'=>$total,'accounts'=>$result,'outbox_count'=>$outboxCount,'new_messages'=>$newMessages,'checked_at'=>date(DATE_ATOM)],JSON_UNESCAPED_UNICODE);
+$notification=null;if($newMessages>0){$detail=(string)(sodium_user_settings((int)current_user()['id'])['notification_detail']??'detailed');$notification=sodium_format_new_mail_notification($newMessages,$newMessageDetails,$newMessageAccounts,$detail);}
+echo json_encode(['unified_unread'=>$total,'accounts'=>$result,'outbox_count'=>$outboxCount,'new_messages'=>$newMessages,'notification'=>$notification,'checked_at'=>date(DATE_ATOM)],JSON_UNESCAPED_UNICODE);

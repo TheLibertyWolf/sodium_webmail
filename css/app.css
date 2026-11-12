@@ -8,6 +8,87 @@
     --text: #1f2937;
 }
 
+@view-transition {
+    navigation: auto;
+}
+
+.sidebar { view-transition-name: sodium-sidebar; }
+.topbar { view-transition-name: sodium-topbar; }
+.outlook-appbar { view-transition-name: sodium-outlook-appbar; }
+.roundcube-app-rail { view-transition-name: sodium-roundcube-rail; }
+.roundcube-folder-pane { view-transition-name: sodium-roundcube-folders; }
+.auth-card { view-transition-name: sodium-auth-card; }
+
+::view-transition-old(root) { animation: sodium-view-out 120ms ease-out both; }
+::view-transition-new(root) { animation: sodium-view-in 190ms cubic-bezier(.2, .75, .25, 1) both; }
+
+::view-transition-group(sodium-sidebar),
+::view-transition-group(sodium-topbar),
+::view-transition-group(sodium-outlook-appbar),
+::view-transition-group(sodium-roundcube-rail),
+::view-transition-group(sodium-roundcube-folders),
+::view-transition-group(sodium-auth-card) {
+    animation-duration: 180ms;
+    animation-timing-function: ease-out;
+}
+
+@keyframes sodium-view-out { to { opacity: 0; transform: translateY(-3px); } }
+@keyframes sodium-view-in { from { opacity: 0; transform: translateY(5px); } }
+
+@media (prefers-reduced-motion: reduce) {
+    ::view-transition-group(*),
+    ::view-transition-old(*),
+    ::view-transition-new(*) {
+        animation-duration: .001ms !important;
+        animation-delay: 0ms !important;
+        animation-iteration-count: 1 !important;
+    }
+}
+
+.mail-list-footer {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    align-items: center;
+    gap: 1rem;
+    min-height: 58px;
+    padding: .75rem 1rem;
+    border-top: 1px solid var(--bs-border-color);
+}
+
+.mail-list-footer > :last-child { justify-self: end; }
+
+.mail-sync-status {
+    --sync-color: #198754;
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--sync-color);
+    font-size: .6rem;
+    font-weight: 750;
+    white-space: nowrap;
+}
+
+.mail-sync-status > i {
+    width: 8px;
+    height: 8px;
+    flex: 0 0 8px;
+    border-radius: 50%;
+    background: var(--sync-color);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--sync-color) 14%, transparent);
+}
+
+.mail-sync-status.is-syncing { --sync-color: #d48600; }
+.mail-sync-status.is-syncing > i { animation: mail-sync-pulse .65s infinite alternate; }
+.mail-sync-status.is-error { --sync-color: #dc3545; }
+
+@keyframes mail-sync-pulse { to { opacity: .35; transform: scale(.78); } }
+
+@media (max-width: 767.98px) {
+    .mail-list-footer { grid-template-columns: 1fr auto; gap: .6rem; }
+    .mail-list-footer > :first-child { display: none; }
+    .mail-sync-status { justify-self: start; }
+}
+
 /* Thèmes utilisateur Sodium 1.2 */
 .theme-choice-grid {
     display: grid;
@@ -554,6 +635,61 @@ body {
 
 .folder-nav .badge {
     flex: 0 0 auto;
+}
+
+.folder-nav-item {
+    position: relative;
+    min-width: 0;
+}
+
+.folder-add-button {
+    position: absolute;
+    top: 50%;
+    right: 5px;
+    z-index: 2;
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+    color: #fff;
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.2);
+    border-radius: .42rem;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-50%) scale(.88);
+    transition: opacity .15s ease, transform .15s ease, background-color .15s ease;
+}
+
+.folder-nav-item:hover .folder-add-button,
+.folder-nav-item:focus-within .folder-add-button,
+.folder-menu .dropdown-item:hover .folder-add-button,
+.folder-menu .dropdown-item:focus-within .folder-add-button,
+.roundcube-folders a:hover .folder-add-button,
+.roundcube-folders a:focus-within .folder-add-button {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(-50%) scale(1);
+}
+
+.folder-nav-item:has(.folder-add-button):hover .nav-link,
+.folder-nav-item:has(.folder-add-button):focus-within .nav-link,
+.folder-menu .dropdown-item:has(.folder-add-button):hover,
+.folder-menu .dropdown-item:has(.folder-add-button):focus-within,
+.roundcube-folders a:has(.folder-add-button):hover,
+.roundcube-folders a:has(.folder-add-button):focus-within {
+    padding-right: 38px;
+}
+
+.folder-add-button:hover,
+.folder-add-button:focus-visible {
+    background: var(--bs-danger);
+}
+
+@media (hover:none) {
+    .folder-add-button {opacity:.8;pointer-events:auto;transform:translateY(-50%) scale(1)}
+    .folder-nav-item:has(.folder-add-button) .nav-link {padding-right:38px}
 }
 
 .sidebar-separator {
@@ -1263,6 +1399,12 @@ body {
     vertical-align: middle;
 }
 
+.forwarded-icon {
+    margin-left: 7px;
+    color: #0d6efd;
+    vertical-align: middle;
+}
+
 .message-date {
     justify-self: end;
     white-space: nowrap;
@@ -1611,6 +1753,9 @@ body {
     background: var(--bs-body-bg);
 }
 
+.modal-detach-actions { display:flex;align-items:center;gap:.35rem;flex:0 0 auto; }
+.modal-detach-actions .btn { width:2.2rem;height:2.2rem;display:inline-flex;align-items:center;justify-content:center;padding:0; }
+
 .reader-avatar {
     width: 42px;
     height: 42px;
@@ -1766,6 +1911,24 @@ body {
     position: relative;
 }
 
+.reader-modal-body.is-previewing {
+    display: flex;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.reader-modal-body.is-previewing > :not(.reader-attachment-preview) {
+    display: none !important;
+}
+
+.reader-modal-body.is-previewing .reader-attachment-preview {
+    position: relative;
+    inset: auto;
+    width: 100%;
+    min-height: 0;
+    flex: 1 1 auto;
+}
+
 .reader-attachment-preview {
     position: absolute;
     inset: 0;
@@ -1804,7 +1967,8 @@ body {
 
 .reader-attachment-preview-body iframe {
     width: 100%;
-    height: 70vh;
+    height: 100%;
+    min-height: 0;
     border: 0;
     background: #fff;
 }

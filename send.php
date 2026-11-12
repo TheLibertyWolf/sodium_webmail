@@ -117,15 +117,18 @@ if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send
     $storedAttachments=array_map(static fn(array $file):array=>['name'=>$file['name'],'type'=>$file['type'],'data'=>base64_encode($file['data'])],$attachments);
     $replyAccountId=(int)($_POST['reply_account_id']??0);
     $replyKey=preg_match('/^[a-f0-9]{64}$/',(string)($_POST['reply_message_key']??''))?(string)$_POST['reply_message_key']:null;
-    if($replyAccountId!==$accountId){$replyAccountId=0;$replyKey=null;}
+    $sourceAction=($_POST['source_action']??'reply')==='forward'?'forward':'reply';
+    $sourceAccountAccessible=false;
+    foreach($accounts as $sourceAccount)if((int)$sourceAccount['id']===$replyAccountId){$sourceAccountAccessible=true;break;}
+    if(!$replyKey||!$sourceAccountAccessible||($sourceAction==='reply'&&$replyAccountId!==$accountId)){$replyAccountId=0;$replyKey=null;$sourceAction='reply';}
     if($composeId){
-        $stmt=$pdo->prepare("UPDATE sodium_composed_messages SET mail_account_id=?,status=?,to_json=?,cc_json=?,bcc_json=?,subject=?,content_html=?,signature_id=?,priority=?,attachments_json=?,scheduled_at=?,reply_account_id=?,reply_message_key=?,in_reply_to=?,undo_until=?,last_error=NULL,edit_original_scheduled_at=NULL,edit_original_undo_until=NULL WHERE id=? AND user_id=? AND status IN ('draft','failed')");
-        $stmt->execute([$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null,$composeId,(int)current_user()['id']]);
+        $stmt=$pdo->prepare("UPDATE sodium_composed_messages SET mail_account_id=?,status=?,to_json=?,cc_json=?,bcc_json=?,subject=?,content_html=?,signature_id=?,priority=?,attachments_json=?,scheduled_at=?,reply_account_id=?,reply_message_key=?,source_action=?,in_reply_to=?,undo_until=?,last_error=NULL,edit_original_scheduled_at=NULL,edit_original_undo_until=NULL WHERE id=? AND user_id=? AND status IN ('draft','failed')");
+        $stmt->execute([$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$sourceAction,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null,$composeId,(int)current_user()['id']]);
     }else{
         $stmt=$pdo->prepare('INSERT INTO sodium_composed_messages
-            (user_id,mail_account_id,status,to_json,cc_json,bcc_json,subject,content_html,signature_id,priority,attachments_json,scheduled_at,reply_account_id,reply_message_key,in_reply_to,undo_until)
-            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
-        $stmt->execute([(int)current_user()['id'],$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null]);
+            (user_id,mail_account_id,status,to_json,cc_json,bcc_json,subject,content_html,signature_id,priority,attachments_json,scheduled_at,reply_account_id,reply_message_key,source_action,in_reply_to,undo_until)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
+        $stmt->execute([(int)current_user()['id'],$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$sourceAction,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null]);
     }
     $removeSourceDraft();
     if($composeAction==='send'){
@@ -142,9 +145,9 @@ try {
     sodium_send_smtp_message($account, $recipients, $cc, $bcc, $subject, $body, $attachments, $priority, $senderName, $inReplyTo);
     if($composeId)$pdo->prepare("UPDATE sodium_composed_messages SET status='sent',sent_at=NOW(),last_error=NULL WHERE id=? AND user_id=?")->execute([$composeId,(int)current_user()['id']]);
     $replyAccountId=(int)($_POST['reply_account_id']??0);$replyKey=(string)($_POST['reply_message_key']??'');
-    if($replyAccountId===$accountId&&preg_match('/^[a-f0-9]{64}$/',$replyKey)){
-        $pdo->prepare('INSERT INTO sodium_message_replies (mail_account_id,source_message_key,user_id,subject,content_html) VALUES (?,?,?,?,?)')
-            ->execute([$accountId,$replyKey,(int)current_user()['id'],$subject,$body]);
+    if($replyAccountId>0&&preg_match('/^[a-f0-9]{64}$/',$replyKey)){
+        if(($_POST['source_action']??'reply')==='forward')$pdo->prepare('INSERT INTO sodium_message_forwards (mail_account_id,source_message_key,user_id) VALUES (?,?,?)')->execute([$replyAccountId,$replyKey,(int)current_user()['id']]);
+        elseif($replyAccountId===$accountId)$pdo->prepare('INSERT INTO sodium_message_replies (mail_account_id,source_message_key,user_id,subject,content_html) VALUES (?,?,?,?,?)')->execute([$accountId,$replyKey,(int)current_user()['id'],$subject,$body]);
     }
     flash('success', count(array_merge($recipients, $cc, $bcc)) > 1 ? 'Message envoyé aux destinataires.' : 'Message envoyé.');
 } catch (Throwable $exception) {

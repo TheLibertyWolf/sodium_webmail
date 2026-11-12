@@ -4,6 +4,11 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 ## [1.3.1] — 2026-08-26
 
+### Navigation et multitâche
+
+- ouverture d’un message dans un nouvel onglet ou une fenêtre indépendante depuis la lecture et le menu contextuel ;
+- détachement de la rédaction dans un nouvel onglet ou une fenêtre, avec conservation des destinataires, du contenu, des réglages et des pièces jointes chargées.
+
 ### Brouillons
 
 - ouverture directe des messages placés dans un dossier IMAP « Brouillons » dans la fenêtre de rédaction, sans passer par la lecture ;

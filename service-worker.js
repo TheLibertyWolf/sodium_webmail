@@ -1,6 +1,6 @@
-const CACHE_NAME = 'sodium-static-v54';
+const CACHE_NAME = 'sodium-static-v61';
 const STATIC_ASSETS = [
-    '/css/app.css?v=20260820-05',
+    '/css/app.css?v=20261112-01',
     '/css/themes.css?v=20260820-02',
     '/assets/vendor/bootstrap/bootstrap.min.css',
     '/assets/vendor/bootstrap/bootstrap.bundle.min.js',
@@ -43,22 +43,21 @@ self.addEventListener('fetch', event => {
 });
 
 self.addEventListener('push', event => {
-    event.waitUntil(self.registration.showNotification('Sodium — Nouveau message', {
-        body: 'Du nouveau courrier est disponible dans votre boîte unifiée.',
-        icon: '/assets/icons/pwa-192.png',
-        badge: '/assets/icons/favicon-64.png',
-        tag: 'sodium-new-mail',
-        renotify: true,
-        data: {url: '/index.php'}
-    }));
+    event.waitUntil((async()=>{
+        let notification={title:'Sodium — Nouveau courrier',body:'Nouveau courrier reçu',account_line:'',url:'/index.php',id:'fallback'};
+        try{const response=await fetch('/api/push-notification.php',{credentials:'include',cache:'no-store',headers:{Accept:'application/json'}});if(response.ok)notification={...notification,...await response.json()};}catch(error){}
+        const body=[notification.body,notification.account_line].filter(Boolean).join('\n');
+        await self.registration.showNotification(notification.title,{body,icon:'/assets/icons/pwa-192.png',badge:'/assets/icons/favicon-64.png',tag:`sodium-new-mail-${notification.id}`,renotify:true,data:{url:notification.url||'/index.php'}});
+    })());
 });
 
 self.addEventListener('notificationclick', event => {
     event.notification.close();
+    const targetUrl=event.notification.data?.url||'/index.php';
     event.waitUntil(clients.matchAll({type:'window',includeUncontrolled:true}).then(windows => {
         for (const client of windows) {
-            if ('focus' in client) { client.navigate('/index.php'); return client.focus(); }
+            if ('focus' in client) { client.navigate(targetUrl); return client.focus(); }
         }
-        return clients.openWindow('/index.php');
+        return clients.openWindow(targetUrl);
     }));
 });
