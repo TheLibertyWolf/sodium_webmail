@@ -2473,3 +2473,51 @@ html.sidebar-collapsed .sidebar .nav-link {
         grid-row: 1;
     }
 }
+
+/* Vues détachées : le message ou la rédaction devient l’unique contenu de la fenêtre. */
+html.sodium-detached-view,
+html.sodium-detached-view body {
+    width: 100%;
+    min-width: 0;
+    min-height: 100%;
+    overflow: hidden;
+    background: var(--bs-body-bg);
+}
+
+html.sodium-detached-view .sidebar,
+html.sodium-detached-view .sidebar-backdrop,
+html.sodium-detached-view .app-main,
+html.sodium-detached-view .outlook-appbar,
+html.sodium-detached-view .outlook-standalone-logout,
+html.sodium-detached-view .roundcube-app-rail,
+html.sodium-detached-view .roundcube-folder-pane,
+html.sodium-detached-view .modal-backdrop {
+    display: none !important;
+}
+
+html.sodium-detached-view .modal {
+    padding: 0 !important;
+    background: var(--bs-body-bg);
+}
+
+html.sodium-detached-view .modal-dialog {
+    width: 100% !important;
+    max-width: none !important;
+    height: 100vh !important;
+    min-height: 100vh !important;
+    margin: 0 !important;
+    transform: none !important;
+}
+
+html.sodium-detached-view .modal-dialog .modal-content {
+    height: 100vh !important;
+    min-height: 100vh !important;
+    max-height: 100vh !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+}
+
+html.sodium-detached-view .modal-dialog-scrollable .modal-body {
+    overflow-y: auto;
+}

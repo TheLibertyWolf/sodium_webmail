@@ -92,7 +92,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="<?=e($bootstrapCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap/bootstrap.min.css\'"':''?>>
         <link href="<?=e($bootstrapIconsCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap-icons/bootstrap-icons.css\'"':''?>>
-        <link href="/css/app.css?v=20260916-01" rel="stylesheet">
+        <link href="/css/app.css?v=20261112-02" rel="stylesheet">
         <link href="/css/themes.css?v=20260820-02" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
@@ -105,6 +105,10 @@ function sodium_render_header(string $title): void
         <script>window.SodiumI18n=<?= json_encode(['locale'=>sodium_locale(),'map'=>sodium_browser_translation_map()],JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES) ?>;</script>
         <script>
             try {
+                const sodiumDetachedMode = new URLSearchParams(location.search).get('detached');
+                if (sodiumDetachedMode === 'reader' || sodiumDetachedMode === 'compose') {
+                    document.documentElement.classList.add('sodium-detached-view', `sodium-detached-${sodiumDetachedMode}`);
+                }
                 if (localStorage.getItem('sodiumSidebarCollapsed') === '1') {
                     document.documentElement.classList.add('sidebar-collapsed');
                 }
