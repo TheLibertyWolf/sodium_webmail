@@ -121,18 +121,22 @@ if($composeAction==='draft'||$composeAction==='schedule'||$composeAction==='send
     $sourceAccountAccessible=false;
     foreach($accounts as $sourceAccount)if((int)$sourceAccount['id']===$replyAccountId){$sourceAccountAccessible=true;break;}
     if(!$replyKey||!$sourceAccountAccessible||($sourceAction==='reply'&&$replyAccountId!==$accountId)){$replyAccountId=0;$replyKey=null;$sourceAction='reply';}
+    $queuedMessageId=0;
     if($composeId){
         $stmt=$pdo->prepare("UPDATE sodium_composed_messages SET mail_account_id=?,status=?,to_json=?,cc_json=?,bcc_json=?,subject=?,content_html=?,signature_id=?,priority=?,attachments_json=?,scheduled_at=?,reply_account_id=?,reply_message_key=?,source_action=?,in_reply_to=?,undo_until=?,last_error=NULL,edit_original_scheduled_at=NULL,edit_original_undo_until=NULL WHERE id=? AND user_id=? AND status IN ('draft','failed')");
         $stmt->execute([$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$sourceAction,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null,$composeId,(int)current_user()['id']]);
+        $queuedMessageId=$composeId;
     }else{
         $stmt=$pdo->prepare('INSERT INTO sodium_composed_messages
             (user_id,mail_account_id,status,to_json,cc_json,bcc_json,subject,content_html,signature_id,priority,attachments_json,scheduled_at,reply_account_id,reply_message_key,source_action,in_reply_to,undo_until)
             VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)');
         $stmt->execute([(int)current_user()['id'],$accountId,$composeAction==='draft'?'draft':'scheduled',json_encode($recipients),json_encode($cc),json_encode($bcc),$subject,$content,$signatureId?:null,$priority,json_encode($storedAttachments),$scheduledAt,$replyAccountId?:null,$replyKey,$sourceAction,$inReplyTo?:null,$composeAction==='send'?$scheduledAt:null]);
+        $queuedMessageId=(int)$pdo->lastInsertId();
     }
     $removeSourceDraft();
     if($composeAction==='send'){
         sodium_delete_temp_uploads($temporaryAttachments);
+        $_SESSION['sodium_send_now_toast_id']=$queuedMessageId;
         flash('success','Message placé en attente pendant '.$sendDelay.' seconde'.($sendDelay>1?'s':'').'. Vous pouvez encore l’annuler depuis la boîte d’envoi.');
         redirect($returnTo);
     }

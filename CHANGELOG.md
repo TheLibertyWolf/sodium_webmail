@@ -8,6 +8,8 @@ Toutes les évolutions notables de Sodium Webmail sont consignées dans ce fichi
 
 - ouverture d’un message dans un nouvel onglet ou une fenêtre indépendante depuis la lecture et le menu contextuel ;
 - détachement de la rédaction dans un nouvel onglet ou une fenêtre, avec conservation des destinataires, du contenu, des réglages et des pièces jointes chargées.
+- depuis le toast de mise en attente d’un envoi, action « Envoyer maintenant » pour supprimer le délai sans quitter la page courante.
+- correction du point lu/non lu : son clic ne déclenche plus l’ouverture du courrier.
 
 ### Brouillons
 

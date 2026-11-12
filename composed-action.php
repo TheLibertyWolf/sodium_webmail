@@ -5,6 +5,8 @@ require_login();
 if(($_SERVER['REQUEST_METHOD']??'GET')!=='POST')redirect('/outbox.php');
 $id=(int)($_POST['id']??0);
 $action=(string)($_POST['action']??'');
+$returnTo=(string)($_POST['return_to']??'/outbox.php');
+$returnTo=str_starts_with($returnTo,'/')&&!str_starts_with($returnTo,'//')?$returnTo:'/outbox.php';
 if($id&&$action==='delete'){
     $pdo->prepare("DELETE FROM sodium_composed_messages WHERE id=? AND user_id=? AND status IN ('draft','scheduled','failed')")->execute([$id,(int)current_user()['id']]);
     flash('success','Message supprimé de la boîte d’envoi.');
@@ -42,4 +44,4 @@ if($id&&$action==='delete'){
         exit;
     }
 }
-redirect('/outbox.php');
+redirect($returnTo);

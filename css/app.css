@@ -1753,8 +1753,11 @@ body {
     background: var(--bs-body-bg);
 }
 
-.modal-detach-actions { display:flex;align-items:center;gap:.35rem;flex:0 0 auto; }
-.modal-detach-actions .btn { width:2.2rem;height:2.2rem;display:inline-flex;align-items:center;justify-content:center;padding:0; }
+.modal-detach-actions { display:flex;align-items:center;flex:0 0 auto;overflow:hidden;border:1px solid var(--bs-border-color);border-radius:.7rem;background:var(--bs-tertiary-bg);box-shadow:inset 0 1px 0 rgba(255,255,255,.08); }
+.modal-detach-button { width:2.35rem;height:2.15rem;display:inline-flex;align-items:center;justify-content:center;padding:0;border:0;border-radius:0;color:var(--bs-secondary-color);background:transparent;transition:color .16s ease,background-color .16s ease,transform .16s ease; }
+.modal-detach-button + .modal-detach-button { border-left:1px solid var(--bs-border-color); }
+.modal-detach-button:hover,.modal-detach-button:focus-visible { color:var(--bs-primary);background:rgba(var(--bs-primary-rgb),.11);outline:0; }
+.modal-detach-button:active { transform:scale(.92); }
 
 .reader-avatar {
     width: 42px;

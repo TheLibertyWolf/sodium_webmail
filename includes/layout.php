@@ -76,6 +76,8 @@ function sodium_render_header(string $title): void
     }
     $activeFolder = (string) ($_GET['folder'] ?? 'INBOX');
     $messages = flash();
+    $sendNowToastId=(int)($_SESSION['sodium_send_now_toast_id']??0);
+    unset($_SESSION['sodium_send_now_toast_id']);
     $updateStatus=sodium_can('sodium_update')?sodium_update_status(false):null;
     $defaultBrowserTitle = $title . ' - '.$instanceName;
     $sodiumDefaultBrowserTitle = $defaultBrowserTitle;
@@ -92,7 +94,7 @@ function sodium_render_header(string $title): void
         <title><?= e($browserTitle) ?></title>
         <link href="<?=e($bootstrapCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap/bootstrap.min.css\'"':''?>>
         <link href="<?=e($bootstrapIconsCss)?>" rel="stylesheet" <?=$remoteDependencies?'onerror="this.onerror=null;this.href=\'/assets/vendor/bootstrap-icons/bootstrap-icons.css\'"':''?>>
-        <link href="/css/app.css?v=20261112-02" rel="stylesheet">
+        <link href="/css/app.css?v=20261112-03" rel="stylesheet">
         <link href="/css/themes.css?v=20260820-02" rel="stylesheet">
         <link rel="manifest" href="/manifest.webmanifest">
         <meta name="theme-color" content="#172033">
@@ -267,9 +269,9 @@ function sodium_render_header(string $title): void
             <?php if(!empty($updateStatus['available'])):?><a class="update-available-banner" href="/admin/settings.php"><i class="bi bi-cloud-arrow-down-fill"></i><span>Une mise à jour Sodium <strong><?=e($updateStatus['latest'])?></strong> est disponible.</span><span class="ms-auto">Consulter <i class="bi bi-chevron-right"></i></span></a><?php endif;?>
             <section class="content">
                 <div class="toast-container position-fixed bottom-0 end-0 p-3 app-toast-container" id="appToastContainer">
-                    <?php foreach ($messages as $type => $message): $toastType = in_array($type, ['success', 'danger', 'warning', 'info'], true) ? $type : 'warning'; ?>
+                    <?php foreach ($messages as $type => $message): $toastType = in_array($type, ['success', 'danger', 'warning', 'info'], true) ? $type : 'warning';$isQueuedSendToast=$toastType==='success'&&$sendNowToastId>0&&str_starts_with((string)$message,'Message placé en attente'); ?>
                         <div class="toast border-0 text-bg-<?= e($toastType) ?>" role="<?= $toastType==='danger'?'alert':'status' ?>" <?= $toastType==='danger'?'data-bs-autohide="false"':'data-bs-delay="5000"' ?>>
-                            <div class="d-flex"><div class="toast-body"><?php if($toastType==='danger'): ?><strong class="d-block mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Erreur</strong><?php endif; ?><?= e($message) ?></div><button type="button" class="btn-close <?= in_array($toastType, ['danger','success'], true) ? 'btn-close-white' : '' ?> me-2 m-auto" data-bs-dismiss="toast"></button></div>
+                            <div class="d-flex"><div class="toast-body"><?php if($toastType==='danger'): ?><strong class="d-block mb-1"><i class="bi bi-exclamation-triangle-fill me-1"></i>Erreur</strong><?php endif; ?><?= e($message) ?><?php if($isQueuedSendToast): ?><form method="post" action="/composed-action.php" class="mt-2"><input type="hidden" name="id" value="<?= $sendNowToastId ?>"><input type="hidden" name="action" value="send_now"><input type="hidden" name="return_to" value="<?= e($_SERVER['REQUEST_URI']??'/index.php') ?>"><button class="btn btn-sm btn-light text-dark fw-semibold" type="submit"><i class="bi bi-send-fill me-1"></i>Envoyer maintenant</button></form><?php endif; ?></div><button type="button" class="btn-close <?= in_array($toastType, ['danger','success'], true) ? 'btn-close-white' : '' ?> me-2 m-auto" data-bs-dismiss="toast"></button></div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -351,7 +353,7 @@ function sodium_render_footer(): void
         <div class="modal fade" id="folderDeleteModal" tabindex="-1" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><div class="modal-header"><h2 class="modal-title h5"><i class="bi bi-folder-x me-2 text-danger"></i>Supprimer le dossier</h2><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><p>Que souhaitez-vous faire des messages contenus dans <strong data-folder-delete-name></strong> ?</p><label class="form-label" for="folderDeleteTarget">Déplacer les messages vers</label><select class="form-select" id="folderDeleteTarget"></select><div class="alert alert-warning mt-3 mb-0"><i class="bi bi-exclamation-triangle me-1"></i> La suppression avec le contenu est définitive.</div></div><div class="modal-footer"><button class="btn btn-outline-secondary" type="button" data-bs-dismiss="modal">Annuler</button><button class="btn btn-outline-danger" type="button" data-folder-delete-content><i class="bi bi-trash"></i> Supprimer avec le contenu</button><button class="btn btn-danger" type="button" data-folder-delete-move><i class="bi bi-folder-symlink"></i> Déplacer puis supprimer</button></div></div></div></div>
         <div class="modal fade" id="messageReaderModal" tabindex="-1" aria-hidden="true">
             <div class="modal-dialog modal-xl modal-dialog-scrollable reader-dialog"><div class="modal-content">
-                <div class="modal-header reader-header"><div class="reader-avatar"><i class="bi bi-person"></i></div><div class="min-width-0 flex-grow-1"><h2 class="modal-title h5 text-truncate mb-1" id="readerSubject">Message</h2><div class="reader-sender text-truncate" id="readerSender"></div><div class="small text-muted text-truncate" id="readerReplyTo"></div><div class="small text-muted text-truncate" id="readerMeta"></div></div><span id="readerTags" class="d-flex gap-1 flex-wrap"></span><div class="modal-detach-actions"><button class="btn btn-sm btn-outline-secondary" type="button" id="readerOpenTab" title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet"><i class="bi bi-box-arrow-up-right"></i></button><button class="btn btn-sm btn-outline-secondary" type="button" id="readerOpenWindow" title="Ouvrir dans une nouvelle fenêtre" aria-label="Ouvrir dans une nouvelle fenêtre"><i class="bi bi-window-stack"></i></button></div><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header reader-header"><div class="reader-avatar"><i class="bi bi-person"></i></div><div class="min-width-0 flex-grow-1"><h2 class="modal-title h5 text-truncate mb-1" id="readerSubject">Message</h2><div class="reader-sender text-truncate" id="readerSender"></div><div class="small text-muted text-truncate" id="readerReplyTo"></div><div class="small text-muted text-truncate" id="readerMeta"></div></div><span id="readerTags" class="d-flex gap-1 flex-wrap"></span><div class="modal-detach-actions" aria-label="Ouvrir le message"><button class="modal-detach-button" type="button" id="readerOpenTab" title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet"><i class="bi bi-box-arrow-up-right"></i></button><button class="modal-detach-button" type="button" id="readerOpenWindow" title="Ouvrir dans une nouvelle fenêtre" aria-label="Ouvrir dans une nouvelle fenêtre"><i class="bi bi-window-stack"></i></button></div><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body reader-modal-body"><div class="reader-loading text-center py-5" id="readerLoading"><div class="spinner-border text-danger"></div></div><div class="reader-security d-none" id="readerSecurity"><div><i class="bi bi-shield-lock-fill"></i><strong> Votre confidentialité est protégée</strong><span> Les images distantes ont été bloquées pour empêcher le suivi de lecture.</span></div><div class="reader-security-actions"><button class="btn btn-sm btn-outline-primary" type="button" id="readerShowImages">Charger les images</button><button class="btn btn-sm btn-link" type="button" id="readerAlwaysImages">Toujours charger les images de cet expéditeur</button></div></div><div class="reader-surface"><iframe id="readerBody" class="reader-body d-none" sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox" title="Contenu du message"></iframe></div><div id="readerReplies" class="d-none mt-3"></div><div id="readerAttachments" class="reader-attachments"></div><div id="readerAttachmentPreview" class="reader-attachment-preview d-none"><div class="reader-attachment-preview-header"><div><i class="bi bi-eye me-2"></i><strong id="readerAttachmentPreviewName">Aperçu</strong></div><button class="btn btn-sm btn-outline-secondary" type="button" id="readerAttachmentPreviewClose"><i class="bi bi-x-lg"></i> Fermer</button></div><div class="reader-attachment-preview-body" id="readerAttachmentPreviewBody"></div></div></div>
                 <div class="modal-footer reader-footer"><div class="reader-footer-primary"><button class="btn btn-success" type="button" id="readerReply"><i class="bi bi-reply"></i> <span>Répondre</span></button><button class="btn btn-outline-success reader-icon-action" type="button" id="readerReplyAll" title="Répondre à tous" aria-label="Répondre à tous"><i class="bi bi-reply-all"></i></button><button class="btn btn-primary reader-icon-action" type="button" id="readerForward" title="Transférer" aria-label="Transférer"><i class="bi bi-forward"></i></button><button class="btn btn-outline-secondary reader-icon-action" type="button" data-reader-action="archive" title="Archiver" aria-label="Archiver"><i class="bi bi-archive"></i></button><button class="btn btn-outline-warning reader-icon-action" type="button" data-reader-action="junk" title="Indésirable" aria-label="Indésirable"><i class="bi bi-exclamation-octagon"></i></button><button class="btn btn-outline-danger reader-icon-action" type="button" data-reader-action="trash" title="Supprimer" aria-label="Supprimer"><i class="bi bi-trash"></i></button></div><div class="reader-footer-actions"><div class="input-group reader-action-select"><select class="form-select" id="readerMoveFolder" aria-label="Dossier de destination"><option value="">Déplacer vers…</option></select><button class="btn btn-outline-primary" type="button" data-reader-select-action="move" title="Déplacer"><i class="bi bi-folder-symlink"></i></button></div><div class="input-group reader-action-select"><select class="form-select" id="readerAddTag" aria-label="Tag à ajouter"><option value="">Ajouter un tag…</option></select><button class="btn btn-outline-secondary" type="button" data-reader-select-action="tag" title="Ajouter le tag"><i class="bi bi-tag"></i></button></div></div><button class="btn btn-outline-secondary reader-close-action ms-auto" type="button" data-bs-dismiss="modal">Fermer</button></div>
             </div></div>
@@ -370,7 +372,7 @@ function sodium_render_footer(): void
                 <input type="hidden" name="source_draft_account_id" value="">
                 <input type="hidden" name="source_draft_folder" value="">
                 <input type="hidden" name="source_draft_uid" value="">
-                <div class="modal-header"><h2 class="modal-title h5"><i class="bi bi-pencil-square me-2"></i>Nouveau message</h2><div class="modal-detach-actions ms-auto"><button class="btn btn-sm btn-outline-secondary" type="button" id="composeOpenTab" title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet"><i class="bi bi-box-arrow-up-right"></i></button><button class="btn btn-sm btn-outline-secondary" type="button" id="composeOpenWindow" title="Ouvrir dans une nouvelle fenêtre" aria-label="Ouvrir dans une nouvelle fenêtre"><i class="bi bi-window-stack"></i></button></div><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
+                <div class="modal-header"><h2 class="modal-title h5"><i class="bi bi-pencil-square me-2"></i>Nouveau message</h2><div class="modal-detach-actions ms-auto" aria-label="Ouvrir la rédaction"><button class="modal-detach-button" type="button" id="composeOpenTab" title="Ouvrir dans un nouvel onglet" aria-label="Ouvrir dans un nouvel onglet"><i class="bi bi-box-arrow-up-right"></i></button><button class="modal-detach-button" type="button" id="composeOpenWindow" title="Ouvrir dans une nouvelle fenêtre" aria-label="Ouvrir dans une nouvelle fenêtre"><i class="bi bi-window-stack"></i></button></div><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div>
                 <div class="modal-body"><div class="row g-0 compose-layout"><div class="col-xl-9 compose-main"><div class="row g-3">
                     <div class="col-md-5"><label class="form-label">Expéditeur</label><select class="form-select" name="mail_account_id" id="composeAccount" required><?php foreach ($accounts as $account): ?><?php if (!empty($account['can_send'])): ?><option value="<?= (int)$account['id'] ?>" <?= $defaultComposeAccountId===(int)$account['id']?'selected':'' ?>><?= e($account['display_name'] ?: $account['email_address']) ?> — <?= e($account['email_address']) ?></option><?php endif; ?><?php endforeach; ?></select></div>
                     <div class="col-md-4"><label class="form-label">Signature</label><select class="form-select" name="signature_id" id="composeSignature"><option value="">Signature du profil</option><?php foreach ($signatures as $signature): ?><option value="<?= (int)$signature['id'] ?>" data-account="<?= (int)$signature['mail_account_id'] ?>" data-content="<?= e($signature['content_html']) ?>" <?= $signature['is_default']?'data-default="1"':'' ?>><?= e($signature['name']) ?> — <?= e($signature['sender_name']) ?></option><?php endforeach; ?></select></div>
@@ -800,6 +802,7 @@ function sodium_render_footer(): void
                 const readerModal = readerElement ? bootstrap.Modal.getOrCreateInstance(readerElement) : null;
                 const detachedParams = new URLSearchParams(location.search);
                 const detachedMode = detachedParams.get('detached') || '';
+                let detachedReaderTransition = false;
                 let readerMessage = null;
                 const openDetachedUrl = (url, mode) => {
                     const features = mode === 'window'
@@ -1093,7 +1096,11 @@ function sodium_render_footer(): void
                         event.dataTransfer.setDragImage(draggedMessagePreview,24,Math.min(24,rowRect.height/2));
                     });
                     row.addEventListener('dragend',()=>{row.classList.remove('is-dragging');row.dataset.dragEndedAt=String(Date.now());draggedMessageRow=null;draggedMessagePreview?.remove();draggedMessagePreview=null;document.querySelectorAll('.folder-drop-target').forEach(target=>target.classList.remove('folder-drop-target'));});
-                    row.querySelector('[data-read-toggle]')?.addEventListener('click', async event => {
+                    const readToggle=row.querySelector('[data-read-toggle]');
+                    ['pointerdown','mousedown','mouseup','dblclick'].forEach(type=>readToggle?.addEventListener(type,event=>event.stopPropagation()));
+                    readToggle?.addEventListener('click', async event => {
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
                         event.stopPropagation();
                         const dot = event.currentTarget;
                         const markSeen = dot.classList.contains('is-unread');
@@ -1284,13 +1291,14 @@ function sodium_render_footer(): void
                         bootstrap.Modal.getOrCreateInstance(composeElement).show();
                         window.setTimeout(finalizeReply, 400);
                     };
+                    if(detachedMode==='reader')detachedReaderTransition=true;
                     readerElement.addEventListener('hidden.bs.modal', prepareReply, {once:true});
                     readerModal.hide();
                 };
                 document.getElementById('readerReply')?.addEventListener('click', () => composeFromReader('reply'));
                 document.getElementById('readerReplyAll')?.addEventListener('click', () => composeFromReader('replyAll'));
                 document.getElementById('readerForward')?.addEventListener('click', () => composeFromReader('forward'));
-                readerElement?.addEventListener('hidden.bs.modal',()=>{if(detachedMode==='reader')window.close();});
+                readerElement?.addEventListener('hidden.bs.modal',()=>{if(detachedMode!=='reader')return;if(detachedReaderTransition){detachedReaderTransition=false;return;}window.close();});
 
                 let messageContextMenu=null;
                 const closeMessageContextMenu=()=>{messageContextMenu?.remove();messageContextMenu=null;};
@@ -1489,7 +1497,7 @@ function sodium_render_footer(): void
                     const modalTitle = form?.querySelector('.modal-title');
                     if (modalTitle) modalTitle.innerHTML = '<i class="bi bi-pencil-square me-2"></i>Nouveau message';
                     syncSignatures();
-                    if(detachedMode==='compose')window.close();
+                    if(detachedMode==='compose'||detachedMode==='reader')window.close();
                 });
 
                 const restoreDetachedCompose=()=>{

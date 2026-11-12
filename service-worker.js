@@ -1,6 +1,6 @@
-const CACHE_NAME = 'sodium-static-v62';
+const CACHE_NAME = 'sodium-static-v63';
 const STATIC_ASSETS = [
-    '/css/app.css?v=20261112-02',
+    '/css/app.css?v=20261112-03',
     '/css/themes.css?v=20260820-02',
     '/assets/vendor/bootstrap/bootstrap.min.css',
     '/assets/vendor/bootstrap/bootstrap.bundle.min.js',
